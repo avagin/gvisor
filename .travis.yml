@@ -1,0 +1,7 @@
+language: minimal
+sudo: required
+dist: xenial
+services:
+  - docker
+script:
+  - make BAZEL_OPTIONS="build ..." bazel && make runsc && make runsc && make bazel-shutdown && ./runsc/test/install.sh --runtime runsc && docker run --runtime=runsc hello-world
