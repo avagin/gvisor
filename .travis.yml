@@ -9,7 +9,8 @@ services:
 env:
   - TEST_SUITE=make
   - TEST_SUITE=docker
-  - TEST_SUITE=syscalls
+  - TEST_SUITE=syscalls-aq
+  - TEST_SUITE=syscalls-rz
   - TEST_SUITE=unit
 script:
   - ./travis/test.sh

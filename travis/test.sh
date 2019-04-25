@@ -31,7 +31,7 @@ elif [ "$TEST_SUITE" == "syscalls-aq" ]; then
   tests=$($bazel query test/syscalls/... | grep -e 'syscalls:[a-q].*ptrace$')
   $bazel test $tests
   exit 0
-elif [ "$TEST_SUITE" == "syscalls-aq" ]; then
+elif [ "$TEST_SUITE" == "syscalls-rz" ]; then
   make runsc
   eval `make bazel-alias | sed 's/alias //'`
   tests=$($bazel query test/syscalls/... | grep -e 'syscalls:[^a-q].*ptrace$')
