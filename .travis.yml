@@ -1,7 +1,15 @@
+cache:
+  directories:
+    - /home/travis/.cache/bazel/
 language: minimal
 sudo: required
 dist: xenial
 services:
   - docker
+env:
+  - TEST_SUITE=make
+  - TEST_SUITE=docker
+  - TEST_SUITE=syscalls
+  - TEST_SUITE=unit
 script:
-  - make BAZEL_OPTIONS="build ..." bazel && make runsc && make runsc && make bazel-shutdown && ./runsc/test/install.sh --runtime runsc && docker run --runtime=runsc hello-world
+  - ./travis/test.sh
