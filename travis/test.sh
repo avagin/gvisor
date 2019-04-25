@@ -16,7 +16,7 @@ if [ "$TEST_SUITE" == "make" ]; then
 
 elif [ "$TEST_SUITE" == "unit" ]; then
   make bazel-server-start
-  make BAZEL_OPTIONS="test pkg/..." bazel
+  make BAZEL_OPTIONS="test --test_tag_filters="-//pkg/sentry/platform/kvm:kvm_test,-//pkg/seccomp:seccomp_test" pkg/..." bazel
   exit 0
 
 elif [ "$TEST_SUITE" == "docker" ]; then
