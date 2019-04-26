@@ -1,10 +1,5 @@
 #!/bin/bash
 
-ls -l /home/travis/.cache/
-ls -l /home/travis/.cache/bazel/
-ls -l /home/travis/.cache/bazel/_bazel_gvisor
-sudo chown -R travis /home/travis/.cache/
-
 set -x -e
 
 if [ "$TEST_SUITE" == "make" ]; then
@@ -20,11 +15,17 @@ elif [ "$TEST_SUITE" == "unit" ]; then
   exit 0
 
 elif [ "$TEST_SUITE" == "docker" ]; then
-  make BAZEL_OPTIONS="build runsc/tools/dockercfg/..." bazel
-  make runsc
-  make bazel-shutdown
+  apt-get update && apt-get install -y curl gnupg2 git
+  echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list && \
+      curl https://bazel.build/bazel-release.pub.gpg | apt-key add -
+  apt-get update && apt-get install -y bazel && apt-get clean
+
+  bazel build runsc/tools/dockercfg/... runsc:runsc
   ./runsc/test/install.sh --runtime runsc
   docker run --runtime=runsc hello-world
+  bazel test --test_env=RUNSC_RUNTIME=runsc \
+    //runsc/test/image:image_test \
+    //runsc/test/integration:integration_test
 elif [ "$TEST_SUITE" == "syscalls-aq" ]; then
   make runsc
   eval `make bazel-alias | sed 's/alias //'`
