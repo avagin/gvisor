@@ -4,7 +4,8 @@ set -x -e
 
 if [ "$TEST_SUITE" == "make" ]; then
   make BAZEL_OPTIONS="build ..." bazel
-  bazel build //runsc:runsc
+  eval `make bazel-alias | sed 's/alias //'`
+  $bazel build //runsc:runsc
   make runsc
   make bazel-shutdown
   exit 0
