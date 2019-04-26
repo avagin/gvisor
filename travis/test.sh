@@ -15,11 +15,7 @@ elif [ "$TEST_SUITE" == "unit" ]; then
   exit 0
 
 elif [ "$TEST_SUITE" == "docker" ]; then
-  apt-get update && apt-get install -y curl gnupg2 git
-  echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list && \
-      curl https://bazel.build/bazel-release.pub.gpg | apt-key add -
-  apt-get update && apt-get install -y bazel && apt-get clean
-
+  sudo ./travis/install-bazel.sh
   bazel build runsc/tools/dockercfg/... runsc:runsc
   ./runsc/test/install.sh --runtime runsc
   docker run --runtime=runsc hello-world
