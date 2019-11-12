@@ -1,0 +1,13 @@
+language: minimal
+sudo: required
+dist: xenial
+services:
+  - docker
+matrix:
+  include:
+   - os: linux
+     arch: amd64
+   - os: linux
+     arch: arm64
+script:
+  - make DOCKER_RUN_OPTIONS="" BAZEL_OPTIONS="build pkg/sentry/platform/ptrace/..." bazel
