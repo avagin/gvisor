@@ -20,7 +20,7 @@ http_archive(
     ],
 )
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 
@@ -54,29 +54,12 @@ http_archive(
         "https://github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
     ],
 )
+
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
+
 rules_proto_dependencies()
+
 rules_proto_toolchains()
-
-# Load python dependencies.
-git_repository(
-    name = "rules_python",
-    commit = "94677401bc56ed5d756f50b441a6a5c7f735a6d4",
-    remote = "https://github.com/bazelbuild/rules_python.git",
-    shallow_since = "1573842889 -0500",
-)
-
-load("@rules_python//python:pip.bzl", "pip_import")
-
-pip_import(
-    name = "pydeps",
-    python_interpreter = "python3",
-    requirements = "//benchmarks:requirements.txt",
-)
-
-load("@pydeps//:requirements.bzl", "pip_install")
-
-pip_install()
 
 # Load bazel_toolchain to support Remote Build Execution.
 # See releases at https://releases.bazel.build/bazel-toolchains.html
@@ -132,9 +115,9 @@ load(
 # This container is built from the Dockerfile in test/iptables/runner.
 container_pull(
     name = "iptables-test",
+    digest = "sha256:a137d692a2eb9fc7bf95c5f4a568da090e2c31098e93634421ed88f3a3f1db65",
     registry = "gcr.io",
     repository = "gvisor-presubmit/iptables-test",
-    digest = "sha256:a137d692a2eb9fc7bf95c5f4a568da090e2c31098e93634421ed88f3a3f1db65",
 )
 
 load(

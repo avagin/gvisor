@@ -7,7 +7,6 @@ load("@rules_cc//cc:defs.bzl", _cc_binary = "cc_binary", _cc_library = "cc_libra
 load("@rules_pkg//:pkg.bzl", _pkg_deb = "pkg_deb", _pkg_tar = "pkg_tar")
 load("@io_bazel_rules_docker//go:image.bzl", _go_image = "go_image")
 load("@io_bazel_rules_docker//container:container.bzl", _container_image = "container_image")
-load("@pydeps//:requirements.bzl", _py_requirement = "requirement")
 load("//tools/bazeldefs:tags.bzl", _go_suffixes = "go_suffixes")
 
 container_image = _container_image
@@ -71,9 +70,6 @@ def go_test(name, **kwargs):
         name = name,
         **kwargs
     )
-
-def py_requirement(name, direct = True):
-    return _py_requirement(name)
 
 def select_arch(amd64 = "amd64", arm64 = "arm64", default = None, **kwargs):
     values = {
