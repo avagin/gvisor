@@ -237,24 +237,26 @@ func (*runApp) execute(t *Task) taskRunState {
 		return (*runApp)(nil)
 
 	case platform.ErrContextSignalCPUID:
-		// Is this a CPUID instruction?
-		region := trace.StartRegion(t.traceContext, cpuidRegion)
-		expected := arch.CPUIDInstruction[:]
-		found := make([]byte, len(expected))
-		_, err := t.CopyIn(usermem.Addr(t.Arch().IP()), &found)
-		if err == nil && bytes.Equal(expected, found) {
-			// Skip the cpuid instruction.
-			t.Arch().CPUIDEmulate(t)
-			t.Arch().SetIP(t.Arch().IP() + uintptr(len(expected)))
-			region.End()
+		if len(arch.CPUIDInstruction) != 0 {
+			// Is this a CPUID instruction?
+			region := trace.StartRegion(t.traceContext, cpuidRegion)
+			expected := arch.CPUIDInstruction[:]
+			found := make([]byte, len(expected))
+			_, err := t.CopyIn(usermem.Addr(t.Arch().IP()), &found)
+			if err == nil && bytes.Equal(expected, found) {
+				// Skip the cpuid instruction.
+				t.Arch().CPUIDEmulate(t)
+				t.Arch().SetIP(t.Arch().IP() + uintptr(len(expected)))
+				region.End()
 
-			// Resume execution.
-			return (*runApp)(nil)
+				// Resume execution.
+				return (*runApp)(nil)
+			}
+			region.End() // Not an actual CPUID, but required copy-in.
+
+			// The instruction at the given RIP was not a CPUID, and we
+			// fallthrough to the default signal deliver behavior below.
 		}
-		region.End() // Not an actual CPUID, but required copy-in.
-
-		// The instruction at the given RIP was not a CPUID, and we
-		// fallthrough to the default signal deliver behavior below.
 		fallthrough
 
 	case platform.ErrContextSignal:

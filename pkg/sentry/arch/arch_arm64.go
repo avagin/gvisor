@@ -53,6 +53,11 @@ const (
 	preferredPIELoadAddr usermem.Addr = maxAddr64 / 6 * 5
 )
 
+var (
+	// CPUIDInstruction is the x86 CPUID instruction.
+	CPUIDInstruction = []byte{}
+)
+
 // These constants are selected as heuristics to help make the Platform's
 // potentially limited address space conform as closely to Linux as possible.
 const (
