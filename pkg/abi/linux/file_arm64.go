@@ -25,8 +25,6 @@ const (
 )
 
 // Stat represents struct stat.
-//
-// +marshal
 type Stat struct {
 	Dev     uint64
 	Ino     uint64

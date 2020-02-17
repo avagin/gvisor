@@ -101,8 +101,6 @@ func NsecToTimeT(nsec int64) TimeT {
 }
 
 // Timespec represents struct timespec in <time.h>.
-//
-// +marshal
 type Timespec struct {
 	Sec  int64
 	Nsec int64

@@ -201,7 +201,6 @@ go_library(
         "//pkg/tcpip/stack",
         "//pkg/usermem",
         "//pkg/waiter",
-        "//tools/go_marshal/marshal",
     ],
 )
 

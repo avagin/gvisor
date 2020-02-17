@@ -61,7 +61,6 @@ go_library(
         "wait.go",
         "xattr.go",
     ],
-    marshal = True,
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/abi",
