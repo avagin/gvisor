@@ -36,9 +36,6 @@ const (
 
 	// initRegsRipAdjustment is the size of the svc instruction.
 	initRegsRipAdjustment = 4
-
-	PTRACE_SYSEMU            = 0x1f
-	PTRACE_SYSEMU_SINGLESTEP = 0x20
 )
 
 // resetSysemuRegs sets up emulation registers.

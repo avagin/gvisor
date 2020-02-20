@@ -21,7 +21,6 @@ import (
 	"strings"
 	"syscall"
 
-	"golang.org/x/sys/unix"
 	"gvisor.dev/gvisor/pkg/abi/linux"
 	"gvisor.dev/gvisor/pkg/seccomp"
 	"gvisor.dev/gvisor/pkg/sentry/arch"
@@ -36,9 +35,6 @@ const (
 
 	// initRegsRipAdjustment is the size of the syscall instruction.
 	initRegsRipAdjustment = 2
-
-	PTRACE_SYSEMU_SINGLESTEP = unix.PTRACE_SYSEMU_SINGLESTEP
-	PTRACE_SYSEMU            = unix.PTRACE_SYSEMU
 )
 
 // resetSysemuRegs sets up emulation registers.

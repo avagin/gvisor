@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"syscall"
 
+	"golang.org/x/sys/unix"
 	"gvisor.dev/gvisor/pkg/log"
 	"gvisor.dev/gvisor/pkg/procid"
 	"gvisor.dev/gvisor/pkg/sentry/arch"
@@ -531,14 +532,14 @@ func (s *subprocess) switchToApp(c *context, ac arch.Context) bool {
 		if isSingleStepping(regs) {
 			if _, _, errno := syscall.RawSyscall6(
 				syscall.SYS_PTRACE,
-				PTRACE_SYSEMU_SINGLESTEP,
+				unix.PTRACE_SYSEMU_SINGLESTEP,
 				uintptr(t.tid), 0, 0, 0, 0); errno != 0 {
 				panic(fmt.Sprintf("ptrace sysemu failed: %v", errno))
 			}
 		} else {
 			if _, _, errno := syscall.RawSyscall6(
 				syscall.SYS_PTRACE,
-				PTRACE_SYSEMU,
+				unix.PTRACE_SYSEMU,
 				uintptr(t.tid), 0, 0, 0, 0); errno != 0 {
 				panic(fmt.Sprintf("ptrace sysemu failed: %v", errno))
 			}
