@@ -140,17 +140,16 @@ func (c *context64) SetStack(value uintptr) {
 
 // TLS returns the current TLS pointer.
 func (c *context64) TLS() uintptr {
-	return uintptr(c.TPValue)
+	// TODO(gvisor.dev/issue/1238): TLS is not supported.
+	// MRS_TPIDR_EL0
+	return 0
 }
 
 // SetTLS sets the current TLS pointer. Returns false if value is invalid.
 func (c *context64) SetTLS(value uintptr) bool {
-	if value >= uintptr(maxAddr64) {
-		return false
-	}
-
-	c.TPValue = uint64(value)
-	return true
+	// TODO(gvisor.dev/issue/1238): TLS is not supported.
+	// MSR_TPIDR_EL0
+	return false
 }
 
 // SetOldRSeqInterruptedIP implements Context.SetOldRSeqInterruptedIP.
