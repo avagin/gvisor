@@ -95,9 +95,6 @@ type State struct {
 	// Our floating point state.
 	aarch64FPState `state:"wait"`
 
-	// TLS pointer
-	TPValue uint64
-
 	// FeatureSet is a pointer to the currently active feature set.
 	FeatureSet *cpuid.FeatureSet
 }
@@ -149,7 +146,6 @@ func (s *State) Fork() State {
 		Regs:           s.Regs,
 		aarch64FPState: s.aarch64FPState.fork(),
 		FeatureSet:     s.FeatureSet,
-		TPValue:        s.TPValue,
 	}
 }
 
@@ -259,7 +255,6 @@ func (s *State) PtraceSetFPRegs(src io.Reader) (int, error) {
 const (
 	_NT_PRSTATUS = 1
 	_NT_PRFPREG  = 2
-	_NT_ARM_TLS  = 0x401
 )
 
 // PtraceGetRegSet implements Context.PtraceGetRegSet.
