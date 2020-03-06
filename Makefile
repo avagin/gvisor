@@ -5,6 +5,8 @@ GVISOR_BAZEL_CACHE := $(shell readlink -f ~/.cache/bazel/)
 # The  --privileged is required to run tests.
 DOCKER_RUN_OPTIONS ?= --privileged
 
+DOCKER_IMAGE ?= gvisor-bazel
+
 all: runsc
 
 docker-build:
@@ -14,7 +16,11 @@ bazel-shutdown:
 	docker exec -i gvisor-bazel bazel shutdown && \
 	docker kill gvisor-bazel
 
+ifeq ($(DOCKER_IMAGE), gvisor-bazel)
 bazel-server-start: docker-build
+endif
+
+bazel-server-start:
 	mkdir -p "$(GVISOR_BAZEL_CACHE)" && \
 	docker run -d --rm --name gvisor-bazel \
 		--user 0:0 \
@@ -23,7 +29,7 @@ bazel-server-start: docker-build
 		--workdir "$(CURDIR)" \
 		--tmpfs /tmp:rw,exec \
 		$(DOCKER_RUN_OPTIONS) \
-		gvisor-bazel \
+		$(DOCKER_IMAGE) \
 		sh -c "while :; do sleep 100; done" && \
 	docker exec --user 0:0 -i gvisor-bazel sh -c "groupadd --gid $(GID) --non-unique gvisor && useradd --uid $(UID) --non-unique --gid $(GID) -d $(HOME) gvisor"
 

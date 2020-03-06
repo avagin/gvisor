@@ -10,9 +10,9 @@ matrix:
   include:
    - os: linux
      arch: amd64
-     env: RUNSC_PATH=./bazel-bin/runsc/linux_amd64_pure_stripped/runsc
+     env: RUNSC_PATH=./bazel-bin/runsc/linux_amd64_pure_stripped/runsc DOCKER_IMAGE=docker.io/avagin/gvisor-bazel
    - os: linux
      arch: arm64
-     env: RUNSC_PATH=./bazel-bin/runsc/linux_arm64_pure_stripped/runsc
+     env: RUNSC_PATH=./bazel-bin/runsc/linux_arm64_pure_stripped/runsc DOCKER_IMAGE=docker.io/avagin/gvisor-bazel:arm64
 script:
-   - ./scripts/travis.sh "$RUNSC_PATH"
+   - ./scripts/travis.sh "$DOCKER_IMAGE" "$RUNSC_PATH"
