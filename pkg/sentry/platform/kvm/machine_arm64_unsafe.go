@@ -96,8 +96,9 @@ func updateVectorTable() {
 	// We should modify the offset of each instruction.
 	nums := []uint32{0x0, 0x80, 0x100, 0x180, 0x200, 0x280, 0x300, 0x380, 0x400, 0x480, 0x500, 0x580, 0x600, 0x680, 0x700, 0x780}
 	for _, num := range nums {
-		entry = (*uint32)(unsafe.Pointer(toLocation + uintptr(num)))
-		*entry = *entry - (uint32)(offset/4)
+		loc := toLocation + uintptr(num)
+		val := *(*uint32)(unsafe.Pointer(loc)) - (uint32)(offset/4)
+		*(*uint32)(unsafe.Pointer(loc)) = val
 	}
 
 	page = getPageWithReflect(toLocation)
