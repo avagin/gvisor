@@ -15,8 +15,7 @@ matrix:
      arch: arm64
      env: RUNSC_PATH=./bazel-bin/runsc/linux_arm64_pure_stripped/runsc
 script:
-   - uname -a
-   - make DOCKER_RUN_OPTIONS="" BAZEL_OPTIONS="build runsc:runsc" bazel && $RUNSC_PATH --alsologtostderr --network none --debug --TESTONLY-unsafe-nonroot=true --rootless do ls
+   - bash -xe ./scripts/travis.sh
 branches:
   except:
   # Skip copybara branches.
