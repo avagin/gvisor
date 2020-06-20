@@ -74,6 +74,23 @@ func (ep *Endpoint) futexSwitchToPeer() error {
 	return nil
 }
 
+func (ep *Endpoint) futexSwitchToPeerAndWait() error {
+	// Update connection state to indicate that the peer should be active.
+	if !atomic.CompareAndSwapUint32(ep.connState(), ep.activeState, ep.inactiveState) {
+		switch cs := atomic.LoadUint32(ep.connState()); cs {
+		case csShutdown:
+			return ShutdownError{}
+		default:
+			return fmt.Errorf("unexpected connection state before FUTEX_WAKE: %v", cs)
+		}
+	}
+	if err := ep.futexSwap(ep.inactiveState); err != nil {
+		return fmt.Errorf("failed to FUTEX_SWAP for peer Endpoint: %v", err)
+	}
+
+	return nil
+}
+
 func (ep *Endpoint) futexSwitchFromPeer() error {
 	for {
 		switch cs := atomic.LoadUint32(ep.connState()); cs {
@@ -93,6 +110,14 @@ func (ep *Endpoint) futexSwitchFromPeer() error {
 			return fmt.Errorf("unexpected connection state before FUTEX_WAIT: %v", cs)
 		}
 	}
+}
+
+func (ep *Endpoint) futexSwap(state uint32) error {
+	_, _, e := syscall.Syscall6(syscall.SYS_FUTEX, ep.packet, linux.FUTEX_SWAP, uintptr(state), 0, ep.packet, 0)
+	if e != 0 && e != syscall.EAGAIN && e != syscall.EINTR {
+		return e
+	}
+	return nil
 }
 
 func (ep *Endpoint) futexWakeConnState(numThreads int32) error {
