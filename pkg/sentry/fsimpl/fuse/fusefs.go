@@ -16,6 +16,8 @@
 package fuse
 
 import (
+	"strconv"
+
 	"gvisor.dev/gvisor/pkg/abi/linux"
 	"gvisor.dev/gvisor/pkg/context"
 	"gvisor.dev/gvisor/pkg/log"
@@ -24,7 +26,6 @@ import (
 	"gvisor.dev/gvisor/pkg/sentry/kernel/auth"
 	"gvisor.dev/gvisor/pkg/sentry/vfs"
 	"gvisor.dev/gvisor/pkg/syserror"
-	"strconv"
 )
 
 // Name is the default filesystem name.
@@ -148,8 +149,12 @@ func (fsType FilesystemType) GetFilesystem(ctx context.Context, vfsObj *vfs.Virt
 
 	fs.VFSFilesystem().Init(vfsObj, &fsType, fs)
 
-	// TODO: dispatch a FUSE_INIT request to the FUSE daemon server before
-	//  returning. Mount will not block on this dispatched request.
+	// Send a FUSE_INIT request to the FUSE daemon server before returning.
+	// This call is not blocking.
+	if err := fs.InitSend(creds, uint32(kernelTask.ThreadID())); err != nil {
+		log.Warningf("%s.InitSend: failed with error: %v", fsType.Name(), err)
+		return nil, nil, err
+	}
 
 	// root is the fusefs root directory.
 	defaultFusefsDirMode := linux.FileMode(0755)
