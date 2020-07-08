@@ -82,6 +82,8 @@ type MountFlags struct {
 
 	// NoDev is equivalent to MS_NODEV and indicates that the
 	// filesystem should not allow access to devices (special files).
+	// TODO(gVisor.dev/issue/3186): respect this flag in non FUSE
+	// filesystems.
 	NoDev bool
 
 	// NoSUID is equivalent to MS_NOSUID and indicates that the
