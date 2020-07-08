@@ -237,7 +237,7 @@ func (s *State) PtraceGetRegs(dst io.Writer) (int, error) {
 	return int(n), err
 }
 
-func (s *State) ptraceGetRegs() Registers {
+func (s *State) ptraceGetRegs() linux.PtraceRegs {
 	return s.Regs
 }
 
