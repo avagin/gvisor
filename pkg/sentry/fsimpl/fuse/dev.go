@@ -60,7 +60,7 @@ type DeviceFD struct {
 
 	// completions is used to map a request to its response. A Writer will use this
 	// to notify the caller of a completed response.
-	completions map[linux.FUSEOpID]*FutureResponse
+	completions map[linux.FUSEOpID]*futureResponse
 
 	// requestKind is a map to quickly identify the kind of operation based on the
 	// opID.
@@ -74,7 +74,7 @@ type DeviceFD struct {
 	writeBuf []byte
 
 	// writeCursorFR current FR being copied from server.
-	writeCursorFR *FutureResponse
+	writeCursorFR *futureResponse
 
 	// mu protects all the queues, maps, buffers and cursors and nextOpID.
 	mu sync.Mutex
@@ -227,7 +227,7 @@ func (fd *DeviceFD) writeLocked(ctx context.Context, src usermem.IOSequence, opt
 		n += cn
 		fd.writeCursor += uint32(cn)
 		if fd.writeCursor == hdrLen {
-			// Have full header in the writeBuf. Use it to fetch the actual FutureResponse
+			// Have full header in the writeBuf. Use it to fetch the actual futureResponse
 			// from the device's completions map.
 			var hdr linux.FUSEHeaderOut
 			hdr.UnmarshalBytes(fd.writeBuf)
@@ -255,7 +255,9 @@ func (fd *DeviceFD) writeLocked(ctx context.Context, src usermem.IOSequence, opt
 
 	if fd.writeCursorFR != nil {
 		// See if the running task need to perform some action before returning.
-		if err := fd.noReceiverAction(ctx, fd.writeCursorFR); err != nil {
+		// Since we just finished writing the future, we can be sure that
+		// getResponse generates a populated response.
+		if err := fd.noReceiverAction(ctx, fd.writeCursorFR.getResponse()); err != nil {
 			return 0, err
 		}
 
@@ -291,13 +293,13 @@ func (fd *DeviceFD) Seek(ctx context.Context, offset int64, whence int32) (int64
 // noReceiverAction has the calling kernel.Task do some action if its known that no
 // receiver is going to be waiting on the future channel. This is to be used by:
 // FUSE_INIT.
-func (fd *DeviceFD) noReceiverAction(ctx context.Context, fut *FutureResponse) error {
-	opCode, ok := fd.requestKind[fut.hdr.Unique]
+func (fd *DeviceFD) noReceiverAction(ctx context.Context, r *Response) error {
+	opCode, ok := fd.requestKind[r.hdr.Unique]
 	if !ok {
 		// Server sent us a response for a request we don't know about.
 		return syserror.EINVAL
 	}
-	delete(fd.requestKind, fut.hdr.Unique)
+	delete(fd.requestKind, r.hdr.Unique)
 
 	if opCode == linux.FUSE_INIT {
 		// TODO: process init response here.

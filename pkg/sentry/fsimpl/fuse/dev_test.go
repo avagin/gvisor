@@ -49,10 +49,7 @@ func CallTest(conn *Connection, r *Request) (*Response, error) {
 	}
 
 	// A response is ready. Resolve and return it.
-	return &Response{
-		hdr:  *fut.hdr,
-		data: fut.data,
-	}, nil
+	return fut.getResponse(), nil
 }
 
 func TestCallAndResolve(t *testing.T) {

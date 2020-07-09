@@ -47,12 +47,12 @@ type Request struct {
 	data []byte
 }
 
-// FutureResponse represents an in-flight request, that may or may not have
+// futureResponse represents an in-flight request, that may or may not have
 // completed yet. Convert it to a resolved Response by calling Resolve, but note
 // that this may block.
 //
 // +stateify savable
-type FutureResponse struct {
+type futureResponse struct {
 	ch   chan struct{}
 	hdr  *linux.FUSEHeaderOut
 	data []byte
@@ -73,7 +73,7 @@ func NewFUSEConnection(ctx context.Context, fd *vfs.FileDescription) (*Connectio
 	// Create the writeBuf for the header to be stored in.
 	hdrLen := uint32((*linux.FUSEHeaderOut)(nil).SizeBytes())
 	fuseFD.writeBuf = make([]byte, hdrLen)
-	fuseFD.completions = make(map[linux.FUSEOpID]*FutureResponse)
+	fuseFD.completions = make(map[linux.FUSEOpID]*futureResponse)
 	fuseFD.requestKind = make(map[linux.FUSEOpID]linux.FUSEOpcode)
 	fuseFD.waitCh = make(chan struct{}, MaxInFlightRequests)
 	fuseFD.writeCursor = 0
@@ -130,7 +130,7 @@ func (conn *Connection) Call(t *kernel.Task, r *Request) (*Response, error) {
 
 // callFuture makes a request to the server and returns a future response.
 // Call resolve() when the response needs to be fulfilled.
-func (conn *Connection) callFuture(r *Request) (*FutureResponse, error) {
+func (conn *Connection) callFuture(r *Request) (*futureResponse, error) {
 	conn.fd.mu.Lock()
 	conn.fd.queue.PushBack(r)
 	fut := newFutureResponse()
@@ -151,15 +151,15 @@ func (conn *Connection) callFuture(r *Request) (*FutureResponse, error) {
 }
 
 // newFutureResponse creates a future response to a FUSE request.
-func newFutureResponse() *FutureResponse {
-	return &FutureResponse{
+func newFutureResponse() *futureResponse {
+	return &futureResponse{
 		ch: make(chan struct{}),
 	}
 }
 
 // resolve blocks the task until the server responds to its corresponding request,
 // then returns a resolved response.
-func (r *FutureResponse) resolve(t *kernel.Task) (*Response, error) {
+func (f *futureResponse) resolve(t *kernel.Task) (*Response, error) {
 	// If there is no Task associated with this request  - then we don't try to resolve
 	// the response.  Instead, the task writing the response (proxy to the server) will
 	// process the response on our behalf.
@@ -168,16 +168,20 @@ func (r *FutureResponse) resolve(t *kernel.Task) (*Response, error) {
 		return nil, nil
 	}
 
-	if err := t.Block(r.ch); err != nil {
+	if err := t.Block(f.ch); err != nil {
 		return nil, err
 	}
 
-	return &Response{
-		hdr:  *r.hdr,
-		data: r.data,
-	}, nil
+	return f.getResponse(), nil
 }
 
+// getResponse creates a Response from the data the futureResponse has.
+func (f * futureResponse) getResponse() *Response {
+	return &Response{
+		hdr:  *f.hdr,
+		data: f.data,
+	}
+}
 // Response represents an actual response from the server, including the
 // response payload.
 //
