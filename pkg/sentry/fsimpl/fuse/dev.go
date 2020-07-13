@@ -232,8 +232,10 @@ func (fd *DeviceFD) writeLocked(ctx context.Context, src usermem.IOSequence, opt
 			var hdr linux.FUSEHeaderOut
 			hdr.UnmarshalBytes(fd.writeBuf)
 
-			// Reset the writeBuf for the next response.
-			fd.writeBuf = fd.writeBuf[:0]
+			// We have the header now and so the writeBuf has served its purpose.
+			// We could reset it manually here but instead of doing that, at the
+			// end of the write, the writeCursor will be set to 0 thereby allowing
+			// the next request to overwrite whats in the buffer,
 
 			fut, ok := fd.completions[hdr.Unique]
 			if !ok {
@@ -269,6 +271,7 @@ func (fd *DeviceFD) writeLocked(ctx context.Context, src usermem.IOSequence, opt
 	return n, nil
 }
 
+// Readiness implements vfs.FileDescriptionImpl.Readiness.
 func (fd *DeviceFD) Readiness(mask waiter.EventMask) waiter.EventMask {
 	var ready waiter.EventMask
 	ready |= waiter.EventOut // FD is always writable

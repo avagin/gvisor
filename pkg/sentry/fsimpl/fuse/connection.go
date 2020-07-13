@@ -16,6 +16,8 @@ package fuse
 
 import (
 	"fmt"
+	"syscall"
+
 	"gvisor.dev/gvisor/pkg/abi/linux"
 	"gvisor.dev/gvisor/pkg/context"
 	"gvisor.dev/gvisor/pkg/log"
@@ -23,16 +25,14 @@ import (
 	"gvisor.dev/gvisor/pkg/sentry/kernel/auth"
 	"gvisor.dev/gvisor/pkg/sentry/vfs"
 	"gvisor.dev/gvisor/tools/go_marshal/marshal"
-	"syscall"
 )
 
-// TODO: configure this properly.
-const MaxInFlightRequests = 1000
+const MaxInFlightRequestsDefault = 1000
 
 var (
 	// Ordinary requests have even IDs, while interrupts IDs are odd.
-	FUSE_INIT_REQ_BIT uint64 = 1
-	FUSE_REQ_ID_STEP  uint64 = 2
+	InitReqBit uint64 = 1
+	ReqIDStep  uint64 = 2
 )
 
 // Request represents a FUSE operation request that hasn't been sent to the
@@ -61,6 +61,11 @@ type futureResponse struct {
 // Connection is the struct by which the sentry communicates with the FUSE server daemon.
 type Connection struct {
 	fd *DeviceFD
+
+	// MaxInflightRequests specifies the maximum number of unread requests that can be
+	// queued in the device at any time. Any further requests will block when trying to
+	// Call the server.
+	MaxInflightRequests uint64
 }
 
 // NewFUSEConnection creates a FUSE connection to fd
@@ -75,12 +80,13 @@ func NewFUSEConnection(ctx context.Context, fd *vfs.FileDescription) (*Connectio
 	fuseFD.writeBuf = make([]byte, hdrLen)
 	fuseFD.completions = make(map[linux.FUSEOpID]*futureResponse)
 	fuseFD.requestKind = make(map[linux.FUSEOpID]linux.FUSEOpcode)
-	fuseFD.waitCh = make(chan struct{}, MaxInFlightRequests)
+	fuseFD.waitCh = make(chan struct{}, MaxInFlightRequestsDefault)
 	fuseFD.writeCursor = 0
 	fuseFD.readCursor = 0
 
 	return &Connection{
 		fd: fuseFD,
+		MaxInflightRequests: MaxInFlightRequestsDefault,
 	}, nil
 }
 
@@ -88,7 +94,7 @@ func NewFUSEConnection(ctx context.Context, fd *vfs.FileDescription) (*Connectio
 func (conn *Connection) NewRequest(creds *auth.Credentials, pid uint32, ino uint64, opcode linux.FUSEOpcode, payload marshal.Marshallable) (*Request, error) {
 	conn.fd.mu.Lock()
 	defer conn.fd.mu.Unlock()
-	conn.fd.nextOpID += linux.FUSEOpID(FUSE_REQ_ID_STEP)
+	conn.fd.nextOpID += linux.FUSEOpID(ReqIDStep)
 
 	hdrLen := (*linux.FUSEHeaderIn)(nil).SizeBytes()
 	hdr := linux.FUSEHeaderIn{
@@ -176,12 +182,13 @@ func (f *futureResponse) resolve(t *kernel.Task) (*Response, error) {
 }
 
 // getResponse creates a Response from the data the futureResponse has.
-func (f * futureResponse) getResponse() *Response {
+func (f *futureResponse) getResponse() *Response {
 	return &Response{
 		hdr:  *f.hdr,
 		data: f.data,
 	}
 }
+
 // Response represents an actual response from the server, including the
 // response payload.
 //
