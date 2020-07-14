@@ -220,3 +220,71 @@ func (i *Inode) Open(ctx context.Context, rp *vfs.ResolvingPath, vfsd *vfs.Dentr
 	}
 	return fd.VFSFileDescription(), nil
 }
+
+// Stat implements kernfs.Inode.Stat.
+func (i *Inode) Stat(ctx context.Context, fs *vfs.Filesystem, opts vfs.StatOptions) (linux.Statx, error) {
+	fusefs := fs.Impl().(*filesystem)
+	task, creds := kernel.TaskFromContext(ctx), auth.CredentialsFromContext(ctx)
+
+	var in linux.FUSEGetAttrIn
+	req, err := fusefs.fuseConn.NewRequest(creds, uint32(task.ThreadID()), i.Ino(), linux.FUSE_GETATTR, &in)
+	if err != nil {
+		return linux.Statx{}, nil
+	}
+
+	res, err := fusefs.fuseConn.Call(task, req)
+	if err != nil {
+		return linux.Statx{}, err
+	}
+	if err := res.Error(); err != nil {
+		return linux.Statx{}, err
+	}
+
+	var out linux.FUSEGetAttrOut
+	if err := res.UnmarshalPayload(&out); err != nil {
+		return linux.Statx{}, err
+	}
+
+	var stat linux.Statx
+	if opts.Mask&linux.STATX_MODE != 0 {
+		stat.Mode = uint16(out.Attr.Mode)
+	}
+	if opts.Mask&linux.STATX_NLINK != 0 {
+		stat.Nlink = out.Attr.Nlink
+	}
+	if opts.Mask&linux.STATX_UID != 0 {
+		stat.UID = out.Attr.UID
+	}
+	if opts.Mask&linux.STATX_GID != 0 {
+		stat.GID = out.Attr.GID
+	}
+	if opts.Mask&linux.STATX_ATIME != 0 {
+		stat.Atime = linux.StatxTimestamp{
+			Sec:  int64(out.Attr.Atime),
+			Nsec: out.Attr.AtimeNsec,
+		}
+	}
+	if opts.Mask&linux.STATX_MTIME != 0 {
+		stat.Mtime = linux.StatxTimestamp{
+			Sec:  int64(out.Attr.Mtime),
+			Nsec: out.Attr.MtimeNsec,
+		}
+	}
+	if opts.Mask&linux.STATX_CTIME != 0 {
+		stat.Ctime = linux.StatxTimestamp{
+			Sec:  int64(out.Attr.Ctime),
+			Nsec: out.Attr.CtimeNsec,
+		}
+	}
+	if opts.Mask&linux.STATX_INO != 0 {
+		stat.Ino = out.Attr.Ino
+	}
+	if opts.Mask&linux.STATX_SIZE != 0 {
+		stat.Size = out.Attr.Size
+	}
+	if opts.Mask&linux.STATX_BLOCKS != 0 {
+		stat.Blocks = out.Attr.Blocks
+	}
+	stat.Blksize = out.Attr.BlkSize
+	return stat, nil
+}

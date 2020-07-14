@@ -214,3 +214,67 @@ type FUSEInitOut struct {
 
 	unused [8]uint32
 }
+
+// FUSE_GETATTR_FH is a flag that indicates the attribute should be computed by
+// the file handle.
+const FUSE_GETATTR_FH = 1 << 0
+
+// FUSE_COMPAT_ATTR_OUT_SIZE
+const FUSE_COMPAT_ATTR_OUT_SIZE = 96
+
+// FUSEGetAttrIn is the request sent by the kernel to the daemon,
+// to get the attribute of a inode
+//
+// +marshal
+type FUSEGetAttrIn struct {
+	// GetAttrFlags specifies whether getattr request is sent with a nodeid or
+	// with a file handle.
+	GetAttrFlags uint32
+
+	// Dummy does nothing
+	Dummy uint32
+
+	// Fh is the file handler when GetAttrFlags has FUSE_GETATTR_FH bit. If
+	// used, the operation is analogous to fstat(2).
+	Fh uint64
+}
+
+// FUSEAttr is the struct used in the reponse FUSEGetAttrOut
+//
+// +marshal
+type FUSEAttr struct {
+	Ino       uint64
+	Size      uint64
+	Blocks    uint64
+	Atime     uint64
+	Mtime     uint64
+	Ctime     uint64
+	AtimeNsec uint32
+	MtimeNsec uint32
+	CtimeNsec uint32
+	Mode      uint32
+	Nlink     uint32
+	UID       uint32
+	GID       uint32
+	Rdev      uint32
+	BlkSize   uint32
+	Padding   uint32
+}
+
+// FUSEGetAttrOut is the reply sent by the daemon to the kernel
+// for FUSEGetAttrIn.
+//
+// +marshal
+type FUSEGetAttrOut struct {
+	// AttrValid
+	AttrValid uint64
+
+	// AttrValidNsec
+	AttrValidNsec uint32
+
+	// Dummy
+	Dummy uint32
+
+	// Attr
+	Attr FUSEAttr
+}
