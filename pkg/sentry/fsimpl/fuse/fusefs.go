@@ -158,7 +158,7 @@ func (fsType FilesystemType) GetFilesystem(ctx context.Context, vfsObj *vfs.Virt
 
 	// root is the fusefs root directory.
 	defaultFusefsDirMode := linux.FileMode(0755)
-	root := fs.newInode(creds, defaultFusefsDirMode)
+	root := fs.newRootInode(creds, defaultFusefsDirMode)
 
 	return fs.VFSFilesystem(), root.VFSDentry(), nil
 }
@@ -193,19 +193,32 @@ func (fs *filesystem) Release() {
 type Inode struct {
 	// TODO: Change these directory inode implementations once fusefs is more fleshed out.
 	kernfs.InodeAttrs
+	// TODO(gvisor.dev/issue/3231): Need to impelemnt Valid and IterDirents methods.
 	kernfs.InodeNoDynamicLookup
 	kernfs.InodeNotSymlink
 	kernfs.InodeDirectoryNoNewChildren
 	kernfs.OrderedChildren
 
-	locks vfs.FileLocks
-
+	NodeID uint64
+	fs     *filesystem
 	dentry kernfs.Dentry
+	locks  vfs.FileLocks
 }
 
-func (fs *filesystem) newInode(creds *auth.Credentials, mode linux.FileMode) *kernfs.Dentry {
-	i := &Inode{}
-	i.InodeAttrs.Init(creds, linux.UNNAMED_MAJOR, fs.devMinor, fs.NextIno(), linux.ModeDirectory|0755)
+func (fs *filesystem) newRootInode(creds *auth.Credentials, mode linux.FileMode) *kernfs.Dentry {
+	i := &Inode{fs: fs}
+	i.InodeAttrs.Init(creds, linux.UNNAMED_MAJOR, fs.devMinor, 1, linux.ModeDirectory|0755)
+	i.OrderedChildren.Init(kernfs.OrderedChildrenOptions{})
+	i.dentry.Init(i)
+	i.NodeID = 1
+
+	return &i.dentry
+}
+
+func (fs *filesystem) newInode(nodeID uint64, generation uint64, attr linux.FUSEAttr) *kernfs.Dentry {
+	i := &Inode{fs: fs, NodeID: nodeID}
+	creds := auth.Credentials{EffectiveKGID: auth.KGID(attr.UID), EffectiveKUID: auth.KUID(attr.UID)}
+	i.InodeAttrs.Init(&creds, linux.UNNAMED_MAJOR, fs.devMinor, fs.NextIno(), linux.FileMode(attr.Mode))
 	i.OrderedChildren.Init(kernfs.OrderedChildrenOptions{})
 	i.dentry.Init(i)
 
@@ -221,13 +234,51 @@ func (i *Inode) Open(ctx context.Context, rp *vfs.ResolvingPath, vfsd *vfs.Dentr
 	return fd.VFSFileDescription(), nil
 }
 
+func (i *Inode) Lookup(ctx context.Context, name string) (*vfs.Dentry, error) {
+	fusefs := i.fs
+	task, creds := kernel.TaskFromContext(ctx), auth.CredentialsFromContext(ctx)
+
+	in := linux.FUSELookupIn{Name: name}
+	req, err := fusefs.fuseConn.NewRequest(creds, uint32(task.ThreadID()), i.NodeID, linux.FUSE_LOOKUP, &in)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := fusefs.fuseConn.Call(task, req)
+	if err != nil {
+		return nil, err
+	}
+	if err := res.Error(); err != nil {
+		return nil, err
+	}
+
+	var out linux.FUSEEntryOut
+	if err := res.UnmarshalPayload(&out); err != nil {
+		return nil, err
+	}
+
+	child := fusefs.newInode(out.NodeID, out.Generation, out.Attr)
+	i.dentry.InsertChildLocked(name, child)
+	return child.VFSDentry(), nil
+}
+
+// IterDirents implements Inode.IterDirents.
+func (Inode) IterDirents(ctx context.Context, callback vfs.IterDirentsCallback, offset, relOffset int64) (int64, error) {
+	return offset, nil
+}
+
+// Valid implements Inode.Valid.
+func (Inode) Valid(ctx context.Context) bool {
+	return true
+}
+
 // Stat implements kernfs.Inode.Stat.
 func (i *Inode) Stat(ctx context.Context, fs *vfs.Filesystem, opts vfs.StatOptions) (linux.Statx, error) {
 	fusefs := fs.Impl().(*filesystem)
 	task, creds := kernel.TaskFromContext(ctx), auth.CredentialsFromContext(ctx)
 
 	var in linux.FUSEGetAttrIn
-	req, err := fusefs.fuseConn.NewRequest(creds, uint32(task.ThreadID()), i.Ino(), linux.FUSE_GETATTR, &in)
+	req, err := fusefs.fuseConn.NewRequest(creds, uint32(task.ThreadID()), i.NodeID, linux.FUSE_GETATTR, &in)
 	if err != nil {
 		return linux.Statx{}, nil
 	}
