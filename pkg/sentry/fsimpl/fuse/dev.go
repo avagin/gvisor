@@ -88,6 +88,11 @@ type DeviceFD struct {
 
 	// fs is the FUSE filesystem that this FD is being used for.
 	fs *filesystem
+
+	// MaxInflightRequests specifies the maximum number of unread requests that can be
+	// queued in the device at any time. Any further requests will block when trying to
+	// Call the server.
+	MaxInflightRequests uint64
 }
 
 // Release implements vfs.FileDescriptionImpl.Release.
@@ -116,13 +121,17 @@ func (fd *DeviceFD) Read(ctx context.Context, dst usermem.IOSequence, opts vfs.R
 		return 0, syserror.EINVAL
 	}
 
-	// Wait for a request to be made available.
-	if err := kernelTask.Block(fd.waitCh); err != nil {
-		log.Warningf("fusefs.DeviceFD.Read: couldn't wait on request queue: %v", err)
-		return 0, syserror.EBUSY
+	fd.mu.Lock()
+	for fd.queue.Empty() || uint64(len(fd.completions)) >= fd.MaxInflightRequests {
+		fd.mu.Unlock()
+		// Wait for a request to be made available.
+		if err := kernelTask.Block(fd.waitCh); err != nil {
+			log.Warningf("fusefs.DeviceFD.Read: couldn't wait on request queue: %v", err)
+			return 0, err
+		}
+		fd.mu.Lock()
 	}
 
-	fd.mu.Lock()
 	defer fd.mu.Unlock()
 	return fd.readLocked(ctx, dst, opts)
 }
@@ -245,6 +254,9 @@ func (fd *DeviceFD) writeLocked(ctx context.Context, src usermem.IOSequence, opt
 			}
 
 			delete(fd.completions, hdr.Unique)
+			if uint64(len(fd.completions)) == fd.MaxInflightRequests-1 {
+				fd.waitCh <- struct{}{}
+			}
 
 			// Copy over the header into the future response. The rest of the payload
 			// will be copied over to the FR's data in the next iteration.
@@ -276,7 +288,7 @@ func (fd *DeviceFD) writeLocked(ctx context.Context, src usermem.IOSequence, opt
 func (fd *DeviceFD) Readiness(mask waiter.EventMask) waiter.EventMask {
 	var ready waiter.EventMask
 	ready |= waiter.EventOut // FD is always writable
-	if !fd.queue.Empty() {
+	if !fd.queue.Empty() && uint64(len(fd.completions)) < fd.MaxInflightRequests {
 		// Have reqs available, FD is readable.
 		ready |= waiter.EventIn
 	}

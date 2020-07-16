@@ -75,11 +75,6 @@ type futureResponse struct {
 type Connection struct {
 	fd *DeviceFD
 
-	// MaxInflightRequests specifies the maximum number of unread requests that can be
-	// queued in the device at any time. Any further requests will block when trying to
-	// Call the server.
-	MaxInflightRequests uint64
-
 	// Initialized after receiving FUSE_INIT reply.
 	// Until it's set, suspend sending FUSE requests.
 	Initialized bool
@@ -91,7 +86,7 @@ type Connection struct {
 	//   before the INIT reply is received (Initialized == false),
 	//   if there are too many outstading backgrounds requests (NumBackground == MaxBackground).
 	// TODO(gvisor.dev/issue/3185): use a channel to block.
-	Blocked bool
+	Blocked chan struct{}
 
 	// Connected (connection established) when a new FUSE file system is created.
 	// Set to false when:
@@ -249,14 +244,15 @@ func NewFUSEConnection(ctx context.Context, fd *vfs.FileDescription) (*Connectio
 	fuseFD.waitCh = make(chan struct{}, MaxInFlightRequestsDefault)
 	fuseFD.writeCursor = 0
 	fuseFD.readCursor = 0
+	fuseFD.MaxInflightRequests = MaxInFlightRequestsDefault
 
 	return &Connection{
 		fd:                  fuseFD,
-		MaxInflightRequests: MaxInFlightRequestsDefault,
 		MaxBackground:       fuseDefaultMaxBackground,
 		CongestionThreshold: fuseDefaultCongestionThreshold,
 		MaxPages:            fuseDefaultMaxPagesPerReq,
 		Connected:           true,
+		Blocked:             make(chan struct{}),
 	}, nil
 }
 
@@ -266,6 +262,7 @@ func (conn *Connection) setInitialized() {
 	defer conn.initializedLock.Unlock()
 
 	conn.Initialized = true
+	close(conn.Blocked)
 }
 
 // Atomically check if the connection is initialized.
@@ -320,6 +317,12 @@ func (conn *Connection) NewRequest(creds *auth.Credentials, pid uint32, ino uint
 // the kernel.Task that writes the response. See FUSE_INIT for such an
 // invocation.
 func (conn *Connection) Call(t *kernel.Task, r *Request) (*Response, error) {
+	if r.hdr.Opcode != linux.FUSE_INIT {
+		err := t.Block(conn.Blocked)
+		if err != nil {
+			return nil, err
+		}
+	}
 	fut, err := conn.callFuture(r)
 	if err != nil {
 		return nil, err
@@ -332,6 +335,7 @@ func (conn *Connection) Call(t *kernel.Task, r *Request) (*Response, error) {
 // Call resolve() when the response needs to be fulfilled.
 func (conn *Connection) callFuture(r *Request) (*futureResponse, error) {
 	conn.fd.mu.Lock()
+	empty := conn.fd.queue.Empty()
 	conn.fd.queue.PushBack(r)
 	fut := newFutureResponse()
 	conn.fd.completions[r.id] = fut
@@ -345,7 +349,9 @@ func (conn *Connection) callFuture(r *Request) (*futureResponse, error) {
 	// TODO: Consider possible starvation here if the waitCh is
 	// continuously full. Will go channels respect FIFO order when
 	// unblocking threads?
-	conn.fd.waitCh <- struct{}{}
+	if empty {
+		conn.fd.waitCh <- struct{}{}
+	}
 
 	return fut, nil
 }
