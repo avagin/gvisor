@@ -1,4 +1,4 @@
-// Copyright 2018 The gVisor Authors.
+// Copyright 2020 The gVisor Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ func main() {
 
 	syscalls := seccomp.SyscallRules{
 		syscall.SYS_ACCEPT:          {},
-		syscall.SYS_ARCH_PRCTL:      {},
 		syscall.SYS_BIND:            {},
 		syscall.SYS_BRK:             {},
 		syscall.SYS_CLOCK_GETTIME:   {},
@@ -41,7 +40,6 @@ func main() {
 		syscall.SYS_DUP3:            {},
 		syscall.SYS_EPOLL_CREATE1:   {},
 		syscall.SYS_EPOLL_CTL:       {},
-		syscall.SYS_EPOLL_WAIT:      {},
 		syscall.SYS_EPOLL_PWAIT:     {},
 		syscall.SYS_EXIT:            {},
 		syscall.SYS_EXIT_GROUP:      {},
@@ -68,8 +66,6 @@ func main() {
 		syscall.SYS_MUNLOCK:         {},
 		syscall.SYS_MUNMAP:          {},
 		syscall.SYS_NANOSLEEP:       {},
-		syscall.SYS_NEWFSTATAT:      {},
-		syscall.SYS_OPEN:            {},
 		syscall.SYS_PPOLL:           {},
 		syscall.SYS_PREAD64:         {},
 		syscall.SYS_PSELECT6:        {},
