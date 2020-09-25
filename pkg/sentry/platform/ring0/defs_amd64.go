@@ -37,11 +37,11 @@ const (
 	// Index into GDT array.
 	_          = iota // Null descriptor first.
 	_                 // Reserved (Linux is kernel 32).
-	segKcode          // Kernel code (64-bit).
-	segKdata          // Kernel data.
-	segUcode32        // User code (32-bit).
-	segUdata          // User data.
-	segUcode64        // User code (64-bit).
+	segKcode          // 2 Kernel code (64-bit).
+	segKdata          // 3 Kernel data.
+	segUcode32        // 4 User code (32-bit).
+	segUdata          // 5 User data.
+	segUcode64        // 6 User code (64-bit).
 	segTss            // Task segment descriptor.
 	segTssHi          // Upper bits for TSS.
 	segLast           // Last segment (terminal, not included).

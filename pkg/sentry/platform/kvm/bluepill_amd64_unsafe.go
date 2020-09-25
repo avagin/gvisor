@@ -83,5 +83,30 @@ func bluepillStopGuest(c *vCPU) {
 //
 //go:nosplit
 func bluepillReadyStopGuest(c *vCPU) bool {
-	return c.runData.readyForInterruptInjection != 0
+	if c.runData.readyForInterruptInjection == 0 {
+		return false
+	}
+
+	if c.runData.ifFlag == 0 {
+		throw("interruption is disabled")
+	}
+
+	// Disable interrupts if the vcpu is running in ring0.
+	err := c.getSystemRegisters(&c.sregs)
+	if err != 0 {
+		throw("failed to get system registers")
+	}
+	if c.sregs.CS.selector&3 == 0 {
+		err := c.getUserRegisters(&c.uregs)
+		if err != 0 {
+			throw("failed to get user registers")
+		}
+		c.uregs.RFLAGS &^= ring0.KernelFlagsClear
+		err = c.setUserRegisters(&c.uregs)
+		if err != 0 {
+			throw("failed to set user registers")
+		}
+		return false
+	}
+	return true
 }

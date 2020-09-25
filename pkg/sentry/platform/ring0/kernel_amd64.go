@@ -193,9 +193,10 @@ func (c *CPU) SwitchToUser(switchOpts SwitchOpts) (vector Vector) {
 	regs.Ss = uint64(Udata)   // Ditto.
 
 	// Perform the switch.
-	swapgs()                                         // GS will be swapped on return.
-	WriteFS(uintptr(regs.Fs_base))                   // escapes: no. Set application FS.
-	WriteGS(uintptr(regs.Gs_base))                   // escapes: no. Set application GS.
+	swapgs()                       // GS will be swapped on return.
+	WriteFS(uintptr(regs.Fs_base)) // escapes: no. Set application FS.
+	//WriteGS(uintptr(regs.Gs_base))                   // escapes: no. Set application GS.
+	WriteGS(kernelAddr(&guestCPU))
 	LoadFloatingPoint(switchOpts.FloatingPointState) // escapes: no. Copy in floating point.
 	jumpToKernel()                                   // Switch to upper half.
 	writeCR3(uintptr(userCR3))                       // Change to user address space.
@@ -210,6 +211,8 @@ func (c *CPU) SwitchToUser(switchOpts SwitchOpts) (vector Vector) {
 	WriteFS(uintptr(c.registers.Fs_base))            // escapes: no. Restore kernel FS.
 	return
 }
+
+var guestCPU CPU
 
 // start is the CPU entrypoint.
 //

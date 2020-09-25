@@ -128,6 +128,9 @@ type vCPU struct {
 	vCPUArchState
 
 	dieState dieState
+
+	uregs userRegs
+	sregs systemRegs
 }
 
 type dieState struct {
