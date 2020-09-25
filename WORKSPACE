@@ -22,14 +22,10 @@ bazel_skylib_workspace()
 # patch used by the Go rules, turning the trick against itself.
 http_archive(
     name = "io_bazel_rules_go",
-    patch_args = ["-p1"],
-    patches = [
-        "//tools/nogo:io_bazel_rules_go-visibility.patch",
-    ],
-    sha256 = "db2b2d35293f405430f553bc7a865a8749a8ef60c30287e90d2b278c32771afe",
+    sha256 = "b725e6497741d7fc2d55fcc29a276627d10e43fa5d0bb692692890ae30d98d00",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.22.3/rules_go-v0.22.3.tar.gz",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.22.3/rules_go-v0.22.3.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.24.3/rules_go-v0.24.3.tar.gz",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.24.3/rules_go-v0.24.3.tar.gz",
     ],
 )
 
