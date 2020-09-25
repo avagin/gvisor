@@ -159,9 +159,8 @@ TEXT ·sysenter(SB),NOSPLIT,$0
 	// and always enabled while executing in user mode. Therefore, we can
 	// reliably look at the flags in R11 to determine where this syscall
 	// was from.
-	TESTL $_RFLAGS_IF, R11
+	TESTL $_RFLAGS_IOPL, R11
 	JZ kernel
-
 user:
 	SWAP_GS()
 	XCHGQ CPU_REGISTERS+PTRACE_RSP(GS), SP // Swap stacks.
@@ -230,7 +229,7 @@ TEXT ·exception(SB),NOSPLIT,$0
 	//	ERROR_CODE  (sp+8)
 	//	VECTOR      (sp+0)
 	//
-	TESTL $_RFLAGS_IF, 32(SP)
+	TESTL $_RFLAGS_IOPL, 32(SP)
 	JZ kernel
 
 user:
