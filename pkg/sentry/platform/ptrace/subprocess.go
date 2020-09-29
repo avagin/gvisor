@@ -78,6 +78,8 @@ type threadPool struct {
 	// be the tracer for the given *thread, and therefore capable of using
 	// relevant ptrace calls.
 	threads map[int32]*thread
+
+	rpc chan SyscallRPC
 }
 
 // lookupOrCreate looks up a given thread or creates one.
@@ -207,6 +209,7 @@ func newSubprocess(create func() (*thread, error)) (*subprocess, error) {
 		return nil, err
 	}
 
+	syscallRPC := make(chan SyscallRPC)
 	// Ready.
 	sp := &subprocess{
 		requests: requests,
@@ -215,9 +218,11 @@ func newSubprocess(create func() (*thread, error)) (*subprocess, error) {
 		},
 		syscallThreads: threadPool{
 			threads: make(map[int32]*thread),
+			rpc:     syscallRPC,
 		},
 		contexts: make(map[*context]struct{}),
 	}
+	go sp.syscallLoop(syscallRPC)
 
 	sp.unmap()
 	return sp, nil
@@ -600,15 +605,45 @@ func (s *subprocess) switchToApp(c *context, ac arch.Context) bool {
 	}
 }
 
-// syscall executes the given system call without handling interruptions.
-func (s *subprocess) syscall(sysno uintptr, args ...arch.SyscallArgument) (uintptr, error) {
-	// Grab a thread.
+type SyscallRPC struct {
+	sysno uintptr
+	args  []arch.SyscallArgument
+	done  chan SyscallRPCRet
+}
+
+type SyscallRPCRet struct {
+	ret uintptr
+	err error
+}
+
+func (s *subprocess) syscallLoop(c chan SyscallRPC) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+
 	currentTID := int32(procid.Current())
 	t := s.syscallThreads.lookupOrCreate(currentTID, s.newThread)
 
-	return t.syscallIgnoreInterrupt(&t.initRegs, sysno, args...)
+	for {
+		req, ok := <-c
+		if !ok {
+			break
+		}
+		ret, err := t.syscallIgnoreInterrupt(&t.initRegs, req.sysno, req.args...)
+		req.done <- SyscallRPCRet{ret: ret, err: err}
+	}
+}
+
+// syscall executes the given system call without handling interruptions.
+func (s *subprocess) syscall(sysno uintptr, args ...arch.SyscallArgument) (uintptr, error) {
+	// Grab a thread.
+
+	req := SyscallRPC{sysno: sysno, args: args}
+	req.done = make(chan SyscallRPCRet, 1)
+	s.syscallThreads.rpc <- req
+
+	rep := <-req.done
+
+	return rep.ret, rep.err
 }
 
 // MapFile implements platform.AddressSpace.MapFile.
