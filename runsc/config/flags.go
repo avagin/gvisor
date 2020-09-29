@@ -61,6 +61,7 @@ func RegisterFlags() {
 		flag.Int("panic-signal", -1, "register signal handling that panics. Usually set to SIGUSR2(12) to troubleshoot hangs. -1 disables it.")
 		flag.Bool("profile", false, "prepares the sandbox to use Golang profiler. Note that enabling profiler loosens the seccomp protection added to the sandbox (DO NOT USE IN PRODUCTION).")
 		flag.Bool("rootless", false, "it allows the sandbox to be started with a user that is not root. Sandbox and Gofer processes may run with same privileges as current user.")
+		flag.Bool("unprivileged", false, "it allows the sandbox to be started with a user that is not root and doesn't have privileges to create a new user namespace. Sandbox and Gofer processes may run with same privileges as current user.")
 		flag.Var(leakModePtr(refs.NoLeakChecking), "ref-leak-mode", "sets reference leak check mode: disabled (default), log-names, log-traces.")
 		flag.Bool("cpu-num-from-quota", false, "set cpu number to cpu quota (least integer greater or equal to quota value, but not less than 2)")
 		flag.Bool("oci-seccomp", false, "Enables loading OCI seccomp filters inside the sandbox.")

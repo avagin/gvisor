@@ -107,26 +107,29 @@ func (g *Gofer) Execute(_ context.Context, f *flag.FlagSet, args ...interface{})
 		Fatalf("reading spec: %v", err)
 	}
 
-	if g.setUpRoot {
-		if err := setupRootFS(spec, conf); err != nil {
-			Fatalf("Error setting up root FS: %v", err)
+	root := "/"
+	if !conf.Unprivileged {
+		if g.setUpRoot {
+			if err := setupRootFS(spec, conf); err != nil {
+				Fatalf("Error setting up root FS: %v", err)
+			}
 		}
-	}
-	if g.applyCaps {
-		// Disable caps when calling myself again.
-		// Note: minimal argument handling for the default case to keep it simple.
-		args := os.Args
-		args = append(args, "--apply-caps=false", "--setup-root=false")
-		if err := setCapsAndCallSelf(args, goferCaps); err != nil {
-			Fatalf("Unable to apply caps: %v", err)
+		if g.applyCaps {
+			// Disable caps when calling myself again.
+			// Note: minimal argument handling for the default case to keep it simple.
+			args := os.Args
+			args = append(args, "--apply-caps=false", "--setup-root=false")
+			if err := setCapsAndCallSelf(args, goferCaps); err != nil {
+				Fatalf("Unable to apply caps: %v", err)
+			}
+			panic("unreachable")
 		}
-		panic("unreachable")
-	}
 
-	// Find what path is going to be served by this gofer.
-	root := spec.Root.Path
-	if !conf.TestOnlyAllowRunAsCurrentUserWithoutChroot {
-		root = "/root"
+		// Find what path is going to be served by this gofer.
+		root = spec.Root.Path
+		if !conf.TestOnlyAllowRunAsCurrentUserWithoutChroot {
+			root = "/root"
+		}
 	}
 
 	// Resolve mount points paths, then replace mounts from our spec and send the
