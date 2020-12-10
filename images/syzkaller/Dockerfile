@@ -8,3 +8,7 @@ WORKDIR  /go/src/github.com/google/syzkaller
 
 RUN git init . && git remote add origin https://github.com/google/syzkaller && git fetch origin && git checkout origin/master && make
 
+COPY syzkaller-gvisor.cfg .
+
+CMD ./bin/syz-manager --config syzkaller-gvisor.cfg --vv 10
+
