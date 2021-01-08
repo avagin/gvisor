@@ -168,6 +168,13 @@ func newSubprocess(create func() (*thread, error)) (*subprocess, error) {
 			return
 		}
 		firstThread.grabInitRegs()
+		if arch.InitFPStateInitialized == false {
+			log.Warningf("=======================+++++++++++++++++++++++++++++++++++++++++")
+			if err := firstThread.getFPRegs(arch.InitFPState.FloatingPointData(), 0x4000, false); err != nil {
+				panic(fmt.Sprintf("ptrace get fpregs failed: %v", err))
+			}
+			arch.InitFPStateInitialized = true
+		}
 
 		// Ready to handle requests.
 		errChan <- nil

@@ -29,6 +29,8 @@ mount -t proc -o noexec,nosuid,nodev proc /proc
 mount -t sysfs -o noexec,nosuid,nodev sysfs /sys
 mount -t devtmpfs -o exec,nosuid,mode=0755,size=2M devtmpfs /dev
 
+cat /proc/cpuinfo
+cat /proc/sys/abi/sve_default_vector_length || true
 uname -a
 /runsc --TESTONLY-unsafe-nonroot --rootless --network none --debug --alsologtostderr do uname -a
 echo "runsc exited with code $?"

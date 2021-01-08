@@ -45,7 +45,7 @@ const (
 	fpsimdMagic = 0x46508001
 
 	// fpsimdContextSize is the size of fpsimd_context.
-	fpsimdContextSize = 0x210
+	fpsimdContextSize = 0x4000
 )
 
 // ARMTrapFlag is the mask for the trap flag.
@@ -63,10 +63,14 @@ type aarch64FPState []byte
 // The fp head is useless in sentry/ptrace/kvm.
 //
 func initAarch64FPState(data aarch64FPState) {
+	if InitFPState != nil {
+		copy(data, InitFPState)
+	}
 }
 
 func newAarch64FPStateSlice() []byte {
-	return alignedBytes(4096, 16)[:fpsimdContextSize]
+	s := alignedBytes(fpsimdContextSize, 16)[:fpsimdContextSize]
+	return s
 }
 
 // newAarch64FPState returns an initialized floating point state.
@@ -78,6 +82,13 @@ func newAarch64FPState() aarch64FPState {
 	f := aarch64FPState(newAarch64FPStateSlice())
 	initAarch64FPState(f)
 	return f
+}
+
+var InitFPState aarch64FPState
+var InitFPStateInitialized = false
+
+func init() {
+	InitFPState = newAarch64FPStateSlice()
 }
 
 // fork creates and returns an identical copy of the aarch64 floating point state.
@@ -279,6 +290,7 @@ const (
 	_NT_PRSTATUS = 1
 	_NT_PRFPREG  = 2
 	_NT_ARM_TLS  = 0x401
+	_NT_ARM_SVE  = 0x405
 )
 
 // PtraceGetRegSet implements Context.PtraceGetRegSet.

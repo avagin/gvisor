@@ -105,4 +105,7 @@ const (
 
 	// NT_ARM_TLS is for ARM TLS register.
 	NT_ARM_TLS = 0x401
+
+	// NT_ARM_SVE is for ARM Scalable Vector Extension registers.
+	NT_ARM_SVE = 0x405
 )

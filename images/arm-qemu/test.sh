@@ -20,7 +20,7 @@ cd initramfs
 find . | cpio -v -o -c -R root:root | gzip -9 >> ../initramfs-lts
 cd ..
 
-qemu-system-aarch64  -M virt -m 512M -cpu cortex-a57 \
+qemu-system-aarch64  -M virt -m 512M -cpu max,sve=on \
   -kernel vmlinuz-lts -initrd initramfs-lts \
   -append "console=ttyAMA0 panic=-1" -nographic -no-reboot \
   | tee /dev/stderr | grep "runsc exited with code 0"

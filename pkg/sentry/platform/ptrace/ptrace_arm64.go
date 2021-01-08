@@ -21,7 +21,7 @@ import (
 
 // fpRegSet returns the GETREGSET/SETREGSET register set type to be used.
 func fpRegSet(_ bool) uintptr {
-	return linux.NT_PRFPREG
+	return linux.NT_ARM_SVE
 }
 
 func stackPointer(r *arch.Registers) uintptr {

@@ -249,7 +249,7 @@ func (fs *FeatureSet) ExtendedStateSize() (size, align uint) {
 	//	  __u32           fpcr;
 	//	  __u32           __reserved[2];
 	// };
-	return 528, 16
+	return 0x4000, 16
 }
 
 // HasFeature tests whether or not a feature is in the given feature set.
