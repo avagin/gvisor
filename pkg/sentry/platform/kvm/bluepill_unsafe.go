@@ -128,6 +128,9 @@ func bluepillHandler(context unsafe.Pointer) {
 				throw("unexpected signal")
 			}
 
+			c.getUserRegisters(&c.debugUserRegisters)
+			c.getSystemRegisters(&c.debugSystemRegisters)
+
 			// Check whether the current state of the vCPU is ready
 			// for interrupt injection. Because we don't have a
 			// PIC, we can't inject an interrupt while they are

@@ -136,6 +136,9 @@ type vCPU struct {
 
 	// dieState holds state related to vCPU death.
 	dieState dieState
+
+	debugSystemRegisters systemRegs
+	debugUserRegisters   userRegs
 }
 
 type dieState struct {
