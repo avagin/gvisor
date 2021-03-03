@@ -111,6 +111,8 @@ func (s *SeqCount) ReadOk(epoch SeqCountEpoch) bool {
 //
 // SeqCount does not support concurrent writer critical sections; clients with
 // concurrent writers must synchronize them using e.g. sync.Mutex.
+//
+//go:nosplit
 func (s *SeqCount) BeginWrite() {
 	if epoch := atomic.AddUint32(&s.epoch, 1); epoch&1 == 0 {
 		panic("SeqCount.BeginWrite during writer critical section")
@@ -118,6 +120,8 @@ func (s *SeqCount) BeginWrite() {
 }
 
 // EndWrite ends the effect of a preceding BeginWrite.
+//
+//go:nosplit
 func (s *SeqCount) EndWrite() {
 	if epoch := atomic.AddUint32(&s.epoch, 1); epoch&1 != 0 {
 		panic("SeqCount.EndWrite outside writer critical section")
