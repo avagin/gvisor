@@ -193,7 +193,8 @@ const (
 func (t *Task) updateInfoLocked() {
 	// Use the task's TID in the root PID namespace for logging.
 	tid := t.tg.pidns.owner.Root.tids[t]
-	t.logPrefix.Store(fmt.Sprintf("[% 4d] ", tid))
+	pid := t.tg.pidns.owner.Root.tgids[t.tg]
+	t.logPrefix.Store(fmt.Sprintf("[% 4d:% 4d:] ", pid, tid))
 	t.rebuildTraceContext(tid)
 }
 

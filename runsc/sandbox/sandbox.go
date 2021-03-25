@@ -127,7 +127,7 @@ type Args struct {
 // New creates the sandbox process. The caller must call Destroy() on the
 // sandbox.
 func New(conf *config.Config, args *Args) (*Sandbox, error) {
-	s := &Sandbox{ID: args.ID, Cgroup: args.Cgroup}
+	s := &Sandbox{ID: args.ID, Cgroup: nil}
 	// The Cleanup object cleans up partially created sandboxes when an error
 	// occurs. Any errors occurring during cleanup itself are ignored.
 	c := cleanup.Make(func() {
