@@ -227,6 +227,7 @@ func New(conf *config.Config, args Args) (*Container, error) {
 		if args.Spec.Linux == nil {
 			args.Spec.Linux = &specs.Linux{}
 		}
+		args.Spec.Linux.CgroupsPath = ""
 		// Don't force the use of cgroups in tests because they lack permission to do so.
 		if args.Spec.Linux.CgroupsPath == "" && !conf.TestOnlyAllowRunAsCurrentUserWithoutChroot {
 			args.Spec.Linux.CgroupsPath = "/" + args.ID

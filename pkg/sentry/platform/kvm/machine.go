@@ -199,8 +199,9 @@ func (m *machine) Watchdog() {
 
 				var m strings.Builder
 				fmt.Fprintf(&m, "VCPU %d is stuck:\n", id)
-				fmt.Fprintf(&m, "\tsystem registers: %+v\n", sregs)
-				fmt.Fprintf(&m, "\tuser registers: %+v\n", uregs)
+				fmt.Fprintf(&m, "\tvcpu: %#v\n", c)
+				fmt.Fprintf(&m, "\tsystem registers: %#v\n", sregs)
+				fmt.Fprintf(&m, "\tuser registers: %#v\n", uregs)
 				fmt.Fprintf(&m, "%s", log.Stacks(true))
 				if now-ts > 3*watchdogTimeout {
 					panic(m.String())

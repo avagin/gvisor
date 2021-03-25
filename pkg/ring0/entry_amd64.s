@@ -403,6 +403,9 @@ user:
 kernel:
 	// As per above, we can save directly.
 	PUSHQ AX
+	RDGSBASEQ AX
+	CMPQ AX, $0
+	JE loop1
 	MOVQ ENTRY_CPU_SELF(GS), AX                        // Load vCPU.
 	REGISTERS_SAVE(AX, CPU_REGISTERS)
 	POPQ BX
@@ -426,6 +429,20 @@ kernel:
 	POPQ BX                   // Pop vector.
 	POPQ AX                   // Pop vCPU.
 	JMP ·resume(SB)
+loop1:
+	POPQ BX
+	MOVQ 0(SP), R14
+	MOVQ 8(SP), R8
+	MOVQ 16(SP), R9
+	MOVQ 24(SP), R10
+	MOVQ 32(SP), R11
+	MOVQ 40(SP), R12
+	MOVQ 48(SP), R13
+        MOVQ $1, AX
+        MOVQ $0, CX
+        CPUID
+loop11:
+	JMP loop11
 
 #define EXCEPTION_WITH_ERROR(value, symbol, addr) \
 ADDR_OF_FUNC(addr, symbol); \
