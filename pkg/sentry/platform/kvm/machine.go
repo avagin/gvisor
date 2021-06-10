@@ -28,6 +28,7 @@ import (
 	"gvisor.dev/gvisor/pkg/procid"
 	"gvisor.dev/gvisor/pkg/ring0"
 	"gvisor.dev/gvisor/pkg/ring0/pagetables"
+	"gvisor.dev/gvisor/pkg/sentry/arch/fpu"
 	ktime "gvisor.dev/gvisor/pkg/sentry/time"
 	"gvisor.dev/gvisor/pkg/sync"
 )
@@ -151,6 +152,7 @@ type vCPU struct {
 	watchdogTimeStamp       int64
 	watchdogSystemRegisters systemRegs
 	watchdogUserRegisters   userRegs
+	watchdogUserFPU         fpu.State
 }
 
 type dieState struct {
@@ -162,7 +164,7 @@ type dieState struct {
 	guestRegs userRegs
 }
 
-const watchdogTimeout = 30
+const watchdogTimeout = 5
 
 func (m *machine) Watchdog() {
 	ticker := time.NewTicker(watchdogTimeout * time.Second)
@@ -231,6 +233,8 @@ func (m *machine) newVCPU() *vCPU {
 	}
 	c.CPU.Init(&m.kernel, c.id, c)
 	m.vCPUsByID[c.id].Store(c)
+
+	c.watchdogUserFPU = fpu.NewState()
 
 	// Ensure the signal mask is correct.
 	if err := c.setSignalMask(); err != nil {

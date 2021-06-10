@@ -348,6 +348,7 @@ func (c *vCPU) SwitchToUser(switchOpts ring0.SwitchOpts, info *arch.SignalInfo) 
 	// See below.
 	var vector ring0.Vector
 
+	copy(c.watchdogUserFPU, *switchOpts.FloatingPointState)
 	// Past this point, stack growth can cause system calls (and a break
 	// from guest mode). So we need to ensure that between the bluepill
 	// call here and the switch call immediately below, no additional
