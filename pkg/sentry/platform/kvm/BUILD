@@ -99,7 +99,7 @@ go_template_instance(
     out = "atomicptr_vcpu_unsafe.go",
     package = "kvm",
     suffix = "VCPU",
-    template = "//pkg/sync:generic_atomicptr",
+    template = "//pkg/sync/atomicptr:generic_atomicptr",
     types = {
         "Value": "vCPU",
     },
