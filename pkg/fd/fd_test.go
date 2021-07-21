@@ -109,7 +109,9 @@ func TestFileDotFile(t *testing.T) {
 }
 
 func TestFileDotFileError(t *testing.T) {
-	f := &FD{ReadWriter{-2}}
+	r := ReadWriter{}
+	r.fd.Store(-2)
+	f := &FD{r}
 
 	if of, err := f.File(); err == nil {
 		t.Errorf("File %v got nil err want non-nil", of)

@@ -20,16 +20,16 @@ import (
 	"io"
 	"os"
 	"runtime"
-	"sync/atomic"
 
 	"golang.org/x/sys/unix"
+	"gvisor.dev/gvisor/pkg/sync/atomic"
 )
 
 // ReadWriter implements io.ReadWriter, io.ReaderAt, and io.WriterAt for fd. It
 // does not take ownership of fd.
 type ReadWriter struct {
 	// fd is accessed atomically so FD.Close/Release can swap it.
-	fd int64
+	fd atomic.AtomicInt32
 }
 
 var _ io.ReadWriter = (*ReadWriter)(nil)
@@ -38,7 +38,9 @@ var _ io.WriterAt = (*ReadWriter)(nil)
 
 // NewReadWriter creates a ReadWriter for fd.
 func NewReadWriter(fd int) *ReadWriter {
-	return &ReadWriter{int64(fd)}
+	r :=  &ReadWriter{}
+	r.fd.Store(int32(fd))
+	return r
 }
 
 func fixCount(n int, err error) (int, error) {
@@ -124,7 +126,7 @@ func (r *ReadWriter) WriteAt(b []byte, off int64) (c int, err error) {
 
 // FD returns the owned file descriptor. Ownership remains unchanged.
 func (r *ReadWriter) FD() int {
-	return int(atomic.LoadInt64(&r.fd))
+	return int(r.fd.Load())
 }
 
 // String implements Stringer.String().
@@ -151,10 +153,13 @@ type FD struct {
 //
 // New takes ownership of fd.
 func New(fd int) *FD {
+	r := ReadWriter{}
 	if fd < 0 {
-		return &FD{ReadWriter{-1}}
+		r.fd.Store(-1)
+		return &FD{r}
 	}
-	f := &FD{ReadWriter{int64(fd)}}
+	r.fd.Store(int32(fd))
+	f := &FD{r}
 	runtime.SetFinalizer(f, (*FD).Close)
 	return f
 }
@@ -173,7 +178,7 @@ func NewFromFile(file *os.File) (*FD, error) {
 	// Fd() returns.
 	runtime.KeepAlive(file)
 	if err != nil {
-		return &FD{ReadWriter{-1}}, err
+		return New(-1), err
 	}
 	return New(fd), nil
 }
@@ -221,7 +226,7 @@ func OpenAt(dir *FD, path string, flags int, mode uint32) (*FD, error) {
 // Concurrently calling Close and any other method is undefined.
 func (f *FD) Close() error {
 	runtime.SetFinalizer(f, nil)
-	return unix.Close(int(atomic.SwapInt64(&f.fd, -1)))
+	return unix.Close(int(f.fd.Swap(-1)))
 }
 
 // Release relinquishes ownership of the contained file descriptor.
@@ -229,7 +234,7 @@ func (f *FD) Close() error {
 // Concurrently calling Release and any other method is undefined.
 func (f *FD) Release() int {
 	runtime.SetFinalizer(f, nil)
-	return int(atomic.SwapInt64(&f.fd, -1))
+	return int(f.fd.Swap(-1))
 }
 
 // File converts the FD to an os.File.

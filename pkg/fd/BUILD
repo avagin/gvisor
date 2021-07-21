@@ -6,7 +6,10 @@ go_library(
     name = "fd",
     srcs = ["fd.go"],
     visibility = ["//visibility:public"],
-    deps = ["@org_golang_x_sys//unix:go_default_library"],
+    deps = [
+        "@org_golang_x_sys//unix:go_default_library",
+        "//pkg/sync/atomic",
+    ],
 )
 
 go_test(
