@@ -15,17 +15,22 @@
 package kvm
 
 import (
+	"fmt"
 	"math/rand"
+	"os"
 	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
 	"gvisor.dev/gvisor/pkg/abi/linux"
 	"gvisor.dev/gvisor/pkg/hostarch"
+	"gvisor.dev/gvisor/pkg/memutil"
 	"gvisor.dev/gvisor/pkg/ring0"
 	"gvisor.dev/gvisor/pkg/ring0/pagetables"
+	"gvisor.dev/gvisor/pkg/safecopy"
 	"gvisor.dev/gvisor/pkg/sentry/arch"
 	"gvisor.dev/gvisor/pkg/sentry/arch/fpu"
 	"gvisor.dev/gvisor/pkg/sentry/platform"
@@ -459,6 +464,52 @@ func TestRdtsc(t *testing.T) {
 		}
 		i++
 		return i < 100
+	})
+}
+
+func TestSafecopySigbus(t *testing.T) {
+	memfd, err := memutil.CreateMemFD(fmt.Sprintf("kvm_test_%d", os.Getpid()), 0)
+	if err != nil {
+		t.Errorf("error creating memfd: %v", err)
+	}
+
+	mapSize := uintptr(faultBlockSize)
+	fileSize := mapSize - hostarch.PageSize
+
+	memfile := os.NewFile(uintptr(memfd), "kvm_test")
+	memfile.Truncate(int64(fileSize))
+	buf := make([]byte, hostarch.PageSize)
+	kvmTest(t, nil, func(c *vCPU) bool {
+		const n = 10
+		mappings := make([]uintptr, n)
+		defer func() {
+			for i := 0; i < n && mappings[i] != 0; i++ {
+				unix.RawSyscall(
+					unix.SYS_MUNMAP,
+					mappings[i], mapSize, 0)
+			}
+		}()
+		for i := 0; i < n; i++ {
+			addr, _, errno := unix.RawSyscall6(
+				unix.SYS_MMAP,
+				0,
+				mapSize,
+				unix.PROT_READ|unix.PROT_WRITE,
+				unix.MAP_SHARED|unix.MAP_FILE,
+				uintptr(memfile.Fd()),
+				0)
+			if errno != 0 {
+				t.Errorf("error mapping runData: %v", errno)
+			}
+			mappings[i] = addr
+			want := safecopy.BusError{addr + fileSize}
+			bluepill(c)
+			_, err := safecopy.CopyIn(buf, unsafe.Pointer(addr+fileSize-512))
+			if err != want {
+				t.Errorf("expected error: got %v, want %v", err, want)
+			}
+		}
+		return false
 	})
 }
 
