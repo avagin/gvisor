@@ -23,17 +23,16 @@ pkg_tar(
 
 pkg_deb(
     name = "debian",
+    package_file_name = "runsc.deb",
     out = "runsc-latest.deb",
     architecture = select_arch(
         amd64 = "amd64",
         arm64 = "arm64",
     ),
-    changes = "runsc.changes",
     conffiles = [
         "/etc/containerd/runsc.toml",
     ],
     data = ":debian-data",
-    deb = "runsc.deb",
     # Note that the description_file will be flatten (all newlines removed),
     # and therefore it is kept to a simple one-line description. The expected
     # format for debian packages is "short summary\nLonger explanation of
