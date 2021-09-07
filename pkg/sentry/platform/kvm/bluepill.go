@@ -41,6 +41,7 @@ func dieTrampoline()
 // wrapper function rather than the function itself. We must reference from
 // assembly to get the ABI0 (i.e., primary) address.
 func addrOfSighandler() uintptr
+func addrOfSigsysHandler() uintptr
 func addrOfDieTrampoline() uintptr
 
 var (
@@ -59,7 +60,8 @@ var (
 	// savedHandler is a pointer to the previous handler.
 	//
 	// This is called by bluepillHandler.
-	savedHandler uintptr
+	savedHandler       uintptr
+	savedSigsysHandler uintptr
 
 	// dieTrampolineAddr is the address of dieTrampoline.
 	dieTrampolineAddr uintptr

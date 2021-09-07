@@ -95,6 +95,19 @@ TEXT ·addrOfSighandler(SB), $0-8
 	MOVQ AX, ret+0(FP)
 	RET
 
+TEXT ·sigsysHandler(SB),NOSPLIT,$0
+	// Call the bluepillHandler.
+	PUSHQ DX                    // First argument (context).
+	CALL ·sigsysGoHandler(SB)   // Call the handler.
+	POPQ DX                     // Discard the argument.
+	RET
+
+// func addrOfSighandler() uintptr
+TEXT ·addrOfSigsysHandler(SB), $0-8
+	MOVQ $·sigsysHandler(SB), AX
+	MOVQ AX, ret+0(FP)
+	RET
+
 // dieTrampoline: see bluepill.go, bluepill_amd64_unsafe.go for documentation.
 TEXT ·dieTrampoline(SB),NOSPLIT,$0
 	PUSHQ BX // First argument (vCPU).

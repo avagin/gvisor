@@ -18,11 +18,15 @@ package kvm
 import (
 	"fmt"
 	"os"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
+	"gvisor.dev/gvisor/pkg/abi/linux"
 	"gvisor.dev/gvisor/pkg/hostarch"
 	"gvisor.dev/gvisor/pkg/ring0"
 	"gvisor.dev/gvisor/pkg/ring0/pagetables"
+	"gvisor.dev/gvisor/pkg/safecopy"
+	"gvisor.dev/gvisor/pkg/seccomp"
 	"gvisor.dev/gvisor/pkg/sentry/platform"
 	"gvisor.dev/gvisor/pkg/sync"
 )
@@ -82,6 +86,68 @@ func OpenDevice() (*os.File, error) {
 		return nil, fmt.Errorf("error opening /dev/kvm: %v", err)
 	}
 	return f, nil
+}
+
+//go:nosplit
+func sigsysGoHandler(context unsafe.Pointer) {
+	regs := bluepillArchContext(context)
+
+	addr, _, e := unix.RawSyscall6(uintptr(regs.Rax), 0xfffffffffffff000, uintptr(regs.Rsi), uintptr(regs.Rdx), uintptr(regs.R10), uintptr(regs.R8), uintptr(regs.R9))
+	regs.Rax = uint64(addr)
+	if e == 0 {
+		vr := region{
+			virtual: addr,
+			length:  uintptr(regs.Rsi),
+		}
+		for virtual := vr.virtual; virtual < vr.virtual+vr.length; {
+			physical, length, ok := translateToPhysical(virtual)
+			if !ok {
+				// This must be an invalid region that was
+				// knocked out by creation of the physical map.
+				return
+			}
+			if virtual+length > vr.virtual+vr.length {
+				// Cap the length to the end of the area.
+				length = vr.virtual + vr.length - virtual
+			}
+
+			// Ensure the physical range is mapped.
+			machineGlobal.mapPhysical(physical, length, physicalRegions, _KVM_MEM_FLAGS_NONE)
+			virtual += length
+		}
+	}
+}
+
+var machineGlobal *machine
+
+func seccompMmapRules() {
+	// Install the handler.
+	if err := safecopy.ReplaceSignalHandler(unix.SIGSYS, addrOfSigsysHandler(), &savedSigsysHandler); err != nil {
+		panic(fmt.Sprintf("Unable to set handler for signal %d: %v", bluepillSignal, err))
+	}
+	rules := []seccomp.RuleSet{}
+	rules = append(rules, []seccomp.RuleSet{
+		// Trap mmap system calls and handle them in sigsysGoHandler
+		{
+			Rules: seccomp.SyscallRules{
+				unix.SYS_MMAP: {
+					{
+						seccomp.LessThan(0xffffffffffff0000),
+					},
+				},
+			},
+			Action: linux.SECCOMP_RET_TRAP,
+		},
+	}...)
+	instrs, err := seccomp.BuildProgram(rules, linux.SECCOMP_RET_ALLOW, linux.SECCOMP_RET_ALLOW)
+	if err != nil {
+		panic(fmt.Sprintf("failed to build rules: %v", err))
+	}
+	// Perform the actual installation.
+	if err := seccomp.SetFilter(instrs); err != nil {
+		panic(fmt.Sprintf("failed to set filter: %v", err))
+	}
+
 }
 
 // New returns a new KVM-based implementation of the platform interface.
