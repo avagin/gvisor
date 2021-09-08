@@ -54,7 +54,8 @@ var VirtualAddressSpaceSize = uintptr(1) << 36
 //
 // The excluded regions are returned.
 func fillAddressSpace(m *machine) (excludedRegions []region) {
-	slots := (uintptr)(m.maxSlots)
+	// FIXME: we don't know how many readonly slots.
+	slots := uintptr(256) - 32
 
 	// We can cut vSize in half, because the kernel will be using the top
 	// half and we ignore it while constructing mappings. It's as if we've

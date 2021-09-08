@@ -111,17 +111,60 @@ func rdonlyRegionsForSetMem() (phyRegions []physicalRegion) {
 }
 
 // Get all available physicalRegions.
-func availableRegionsForSetMem() (phyRegions []physicalRegion) {
-	var excludeRegions []region
+func availableRegionsForSetMem() ([]physicalRegion) {
+	var excludedRegions []region
 	applyVirtualRegions(func(vr virtualRegion) {
 		if !vr.accessType.Write {
-			excludeRegions = append(excludeRegions, vr.region)
+			excludedRegions = append(excludedRegions, vr.region)
 		}
 	})
 
-	phyRegions = computePhysicalRegions(excludeRegions)
+	// Add an unreachable region.
+	excludedRegions = append(excludedRegions, region {
+		virtual: 0xffffffffffffffff,
+		length: 0,
+	})
 
-	return phyRegions
+	var regions []physicalRegion
+	addValidRegion := func(r *physicalRegion, virtual, length uintptr) {
+		if length == 0 {
+			return
+		}
+		regions = append(regions, physicalRegion {
+				region: region{
+					virtual: virtual,
+					length: length,
+				},
+				physical: r.physical + (virtual - r.virtual),
+		})
+	}
+	i := 0
+	for _, pr := range(physicalRegions) {
+		start := pr.virtual
+		end := pr.virtual + pr.length
+		for start < end {
+			er := excludedRegions[i]
+			excludeEnd := er.virtual + er.length
+			excludeStart := er.virtual
+			if excludeEnd < start {
+				i++
+				continue
+			}
+			if excludeStart < start {
+				start = excludeEnd
+				i++
+				continue
+			}
+			rend := excludeStart
+			if rend > end {
+				rend = end
+			}
+			addValidRegion(&pr, start, rend - start)
+			start = excludeEnd
+		}
+	}
+
+	return regions
 }
 
 // nonCanonical generates a canonical address return.
