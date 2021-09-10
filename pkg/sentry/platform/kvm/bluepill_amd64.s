@@ -98,11 +98,16 @@ TEXT ·addrOfSighandler(SB), $0-8
 	RET
 
 TEXT ·sigsysHandler(SB),NOSPLIT,$0
+	// Check if the signal is from the kernel.
+	MOVQ $1, CX
+	CMPL CX, 0x8(SI)
+	JNE fallback
+
 	MOVL CONTEXT_RAX(DX), CX
 	CMPL CX, $SYS_MMAP
 	JNE fallback
 	PUSHQ DX                    // First argument (context).
-	CALL ·seccompHandler(SB)    // Call the handler.
+	CALL ·seccompMmapHandler(SB)    // Call the handler.
 	POPQ DX                     // Discard the argument.
 	RET
 fallback:

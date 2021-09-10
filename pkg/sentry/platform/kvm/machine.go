@@ -227,8 +227,8 @@ func newMachine(vm int) (*machine, error) {
 	m.upperSharedPageTables.MarkReadOnlyShared()
 	m.kernel.PageTables = pagetables.NewWithUpper(newAllocator(), m.upperSharedPageTables, ring0.KernelStartAddress)
 
-	machineGlobal = m
-	seccompMmapRules()
+	seccompMmapRules(m)
+
 	// Apply the physical mappings. Note that these mappings may point to
 	// guest physical addresses that are not actually available. These
 	// physical pages are mapped on demand, see kernel_unsafe.go.

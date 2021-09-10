@@ -18,7 +18,6 @@ package kvm
 import (
 	"fmt"
 	"os"
-	"unsafe"
 
 	"golang.org/x/sys/unix"
 	"gvisor.dev/gvisor/pkg/abi/linux"
@@ -88,45 +87,14 @@ func OpenDevice() (*os.File, error) {
 	return f, nil
 }
 
-//go:nosplit
-func seccompHandler(context unsafe.Pointer) {
-	regs := bluepillArchContext(context)
+var seccompMachine *machine
 
-	if regs.Rax != unix.SYS_MMAP {
-		return
+func seccompMmapRules(m *machine) {
+	if seccompMachine != nil {
+		panic("seccompMachine is already set")
 	}
-	if regs.Rdi != 0 {
-		throw("unexpected mmap adddress")
-	}
-	addr, _, e := unix.RawSyscall6(uintptr(regs.Rax), 0xfffffffffffff000, uintptr(regs.Rsi), uintptr(regs.Rdx), uintptr(regs.R10), uintptr(regs.R8), uintptr(regs.R9))
-	regs.Rax = uint64(addr)
-	if e == 0 {
-		vr := region{
-			virtual: addr,
-			length:  uintptr(regs.Rsi),
-		}
-		for virtual := vr.virtual; virtual < vr.virtual+vr.length; {
-			physical, length, ok := translateToPhysical(virtual)
-			if !ok {
-				// This must be an invalid region that was
-				// knocked out by creation of the physical map.
-				return
-			}
-			if virtual+length > vr.virtual+vr.length {
-				// Cap the length to the end of the area.
-				length = vr.virtual + vr.length - virtual
-			}
+	seccompMachine = m
 
-			// Ensure the physical range is mapped.
-			machineGlobal.mapPhysical(physical, length, physicalRegions, _KVM_MEM_FLAGS_NONE)
-			virtual += length
-		}
-	}
-}
-
-var machineGlobal *machine
-
-func seccompMmapRules() {
 	// Install the handler.
 	if err := safecopy.ReplaceSignalHandler(unix.SIGSYS, addrOfSigsysHandler(), &savedSigsysHandler); err != nil {
 		panic(fmt.Sprintf("Unable to set handler for signal %d: %v", bluepillSignal, err))
