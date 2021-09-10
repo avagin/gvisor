@@ -89,9 +89,15 @@ func OpenDevice() (*os.File, error) {
 }
 
 //go:nosplit
-func sigsysGoHandler(context unsafe.Pointer) {
+func seccompHandler(context unsafe.Pointer) {
 	regs := bluepillArchContext(context)
 
+	if regs.Rax != unix.SYS_MMAP {
+		return
+	}
+	if regs.Rdi != 0 {
+		throw("unexpected mmap adddress")
+	}
 	addr, _, e := unix.RawSyscall6(uintptr(regs.Rax), 0xfffffffffffff000, uintptr(regs.Rsi), uintptr(regs.Rdx), uintptr(regs.R10), uintptr(regs.R8), uintptr(regs.R9))
 	regs.Rax = uint64(addr)
 	if e == 0 {

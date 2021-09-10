@@ -32,6 +32,8 @@
 // This is checked as the source of the fault.
 #define CLI $0xfa
 
+#define SYS_MMAP 9
+
 // See bluepill.go.
 TEXT ·bluepill(SB),NOSPLIT,$0
 begin:
@@ -96,11 +98,18 @@ TEXT ·addrOfSighandler(SB), $0-8
 	RET
 
 TEXT ·sigsysHandler(SB),NOSPLIT,$0
-	// Call the bluepillHandler.
+	MOVL CONTEXT_RAX(DX), CX
+	CMPL CX, $SYS_MMAP
+	JNE fallback
 	PUSHQ DX                    // First argument (context).
-	CALL ·sigsysGoHandler(SB)   // Call the handler.
+	CALL ·seccompHandler(SB)    // Call the handler.
 	POPQ DX                     // Discard the argument.
 	RET
+fallback:
+	// Jump to the previous signal handler.
+	XORQ CX, CX
+	MOVQ ·savedSigsysHandler(SB), AX
+	JMP AX
 
 // func addrOfSighandler() uintptr
 TEXT ·addrOfSigsysHandler(SB), $0-8
