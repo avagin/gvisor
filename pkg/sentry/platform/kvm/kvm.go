@@ -18,6 +18,7 @@ package kvm
 import (
 	"fmt"
 	"os"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
 	"gvisor.dev/gvisor/pkg/abi/linux"
@@ -89,6 +90,44 @@ func OpenDevice() (*os.File, error) {
 
 var seccompMachine *machine
 
+// archMmapHandler creates a new memory region and maps it to the guest.
+//
+//go:nosplit
+func seccompMmapHandler(context unsafe.Pointer) {
+
+	addr, length, errno := seccompMmapSyscall(context)
+	if errno != 0 {
+		return
+	}
+
+	m := seccompMachine
+	if m == nil {
+		return
+	}
+
+	// Map the new region to the guest.
+	vr := region{
+		virtual: addr,
+		length:  length,
+	}
+	for virtual := vr.virtual; virtual < vr.virtual+vr.length; {
+		physical, length, ok := translateToPhysical(virtual)
+		if !ok {
+			// This must be an invalid region that was
+			// knocked out by creation of the physical map.
+			return
+		}
+		if virtual+length > vr.virtual+vr.length {
+			// Cap the length to the end of the area.
+			length = vr.virtual + vr.length - virtual
+		}
+
+		// Ensure the physical range is mapped.
+		m.mapPhysical(physical, length, physicalRegions, _KVM_MEM_FLAGS_NONE)
+		virtual += length
+	}
+}
+
 func seccompMmapRules(m *machine) {
 	if seccompMachine != nil {
 		panic("seccompMachine is already set")
@@ -106,7 +145,11 @@ func seccompMmapRules(m *machine) {
 			Rules: seccomp.SyscallRules{
 				unix.SYS_MMAP: {
 					{
-						seccomp.LessThan(0xffffffffffff0000),
+						seccomp.MatchAny{},
+						seccomp.MatchAny{},
+						seccomp.MatchAny{},
+						/* MAP_DENYWRITE is ignored and used only for filtering. */
+						seccomp.MaskedEqual(unix.MAP_DENYWRITE, 0),
 					},
 				},
 			},

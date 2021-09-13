@@ -263,6 +263,11 @@ func newMachine(vm int) (*machine, error) {
 			return // skip region.
 		}
 
+		if vr.filename == "[stack]" {
+			vr.virtual -= 1 << 20
+			vr.length += 1 << 20
+		}
+
 		for _, r := range physicalRegionsReadOnly {
 			if vr.virtual == r.virtual {
 				return

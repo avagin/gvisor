@@ -27,46 +27,14 @@ const (
 	reservedMemory = 0x100000000
 )
 
-// archMmapHandler creates a new memory region and maps it to the guest.
-//
 //go:nosplit
-func seccompMmapHandler(context unsafe.Pointer) {
+func seccompMmapSyscall(context unsafe.Pointer) (uintptr, uintptr, unix.Errno) {
 	ctx := bluepillArchContext(context)
 
-	if ctx.Rdi != 0 {
-		throw("unexpected mmap adddress")
-	}
-
-	addr, _, e := unix.RawSyscall6(uintptr(ctx.Rax), 0xfffffffffffff000, uintptr(ctx.Rsi), uintptr(ctx.Rdx), uintptr(ctx.R10), uintptr(ctx.R8), uintptr(ctx.R9))
+	// MAP_DENYWRITE is deprecated and ignored by kernel. We use it only for seccomp filters.
+	addr, _, e := unix.RawSyscall6(uintptr(ctx.Rax), uintptr(ctx.Rdi), uintptr(ctx.Rsi),
+		uintptr(ctx.Rdx), uintptr(ctx.R10)|unix.MAP_DENYWRITE, uintptr(ctx.R8), uintptr(ctx.R9))
 	ctx.Rax = uint64(addr)
-	if e != 0 {
-		return
-	}
 
-	m := seccompMachine
-	if m == nil {
-		return
-	}
-
-	// Map the new region to the guest.
-	vr := region{
-		virtual: addr,
-		length:  uintptr(ctx.Rsi),
-	}
-	for virtual := vr.virtual; virtual < vr.virtual+vr.length; {
-		physical, length, ok := translateToPhysical(virtual)
-		if !ok {
-			// This must be an invalid region that was
-			// knocked out by creation of the physical map.
-			return
-		}
-		if virtual+length > vr.virtual+vr.length {
-			// Cap the length to the end of the area.
-			length = vr.virtual + vr.length - virtual
-		}
-
-		// Ensure the physical range is mapped.
-		m.mapPhysical(physical, length, physicalRegions, _KVM_MEM_FLAGS_NONE)
-		virtual += length
-	}
+	return addr, uintptr(ctx.Rsi), e
 }
