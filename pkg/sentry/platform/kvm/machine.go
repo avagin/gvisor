@@ -20,12 +20,15 @@ import (
 	"sync/atomic"
 
 	"golang.org/x/sys/unix"
+	"gvisor.dev/gvisor/pkg/abi/linux"
 	"gvisor.dev/gvisor/pkg/atomicbitops"
 	"gvisor.dev/gvisor/pkg/hostarch"
 	"gvisor.dev/gvisor/pkg/log"
 	"gvisor.dev/gvisor/pkg/procid"
 	"gvisor.dev/gvisor/pkg/ring0"
 	"gvisor.dev/gvisor/pkg/ring0/pagetables"
+	"gvisor.dev/gvisor/pkg/safecopy"
+	"gvisor.dev/gvisor/pkg/seccomp"
 	ktime "gvisor.dev/gvisor/pkg/sentry/time"
 	"gvisor.dev/gvisor/pkg/sync"
 )
@@ -688,5 +691,46 @@ func (c *vCPU) setSystemTimeLegacy() error {
 		if iter >= minIterations && current <= upperThreshold {
 			return nil
 		}
+	}
+}
+
+var seccompMachine *machine
+
+// seccompMmapRules add seccomp rules to trap mmap system calls that are handled in seccompMmapHandler.
+func seccompMmapRules(m *machine) {
+	if seccompMachine != nil {
+		panic("seccompMachine is already set")
+	}
+	seccompMachine = m
+
+	// Install the handler.
+	if err := safecopy.ReplaceSignalHandler(unix.SIGSYS, addrOfSigsysHandler(), &savedSigsysHandler); err != nil {
+		panic(fmt.Sprintf("Unable to set handler for signal %d: %v", bluepillSignal, err))
+	}
+	rules := []seccomp.RuleSet{}
+	rules = append(rules, []seccomp.RuleSet{
+		// Trap mmap system calls and handle them in sigsysGoHandler
+		{
+			Rules: seccomp.SyscallRules{
+				unix.SYS_MMAP: {
+					{
+						seccomp.MatchAny{},
+						seccomp.MatchAny{},
+						seccomp.MatchAny{},
+						/* MAP_DENYWRITE is ignored and used only for filtering. */
+						seccomp.MaskedEqual(unix.MAP_DENYWRITE, 0),
+					},
+				},
+			},
+			Action: linux.SECCOMP_RET_TRAP,
+		},
+	}...)
+	instrs, err := seccomp.BuildProgram(rules, linux.SECCOMP_RET_ALLOW, linux.SECCOMP_RET_ALLOW)
+	if err != nil {
+		panic(fmt.Sprintf("failed to build rules: %v", err))
+	}
+	// Perform the actual installation.
+	if err := seccomp.SetFilter(instrs); err != nil {
+		panic(fmt.Sprintf("failed to set filter: %v", err))
 	}
 }
