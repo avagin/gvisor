@@ -761,6 +761,12 @@ syscall_test(
 
 syscall_test(
     test = "//test/syscalls/linux:socket_netlink_route_test",
+    tags = ["container"],
+)
+
+syscall_test(
+    test = "//test/syscalls/linux:socket_netlink_route_isolated_test",
+    tags = ["container"],
 )
 
 syscall_test(
