@@ -6,4 +6,4 @@ platforms = {
     "kvm": [],
 }
 
-default_platform = "ptrace"
+default_platform = "kvm"
