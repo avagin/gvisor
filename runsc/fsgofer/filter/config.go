@@ -218,9 +218,13 @@ var allowedSyscalls = seccomp.SyscallRules{
 			seccomp.EqualTo(uint64(os.Getpid())),
 		},
 	},
-	unix.SYS_UNLINKAT:  {},
-	unix.SYS_UTIMENSAT: {},
-	unix.SYS_WRITE:     {},
+	unix.SYS_UNLINKAT:          {},
+	unix.SYS_UTIMENSAT:         {},
+	unix.SYS_WRITE:             {},
+	unix.SYS_IO_URING_ENTER:    {},
+	unix.SYS_IO_URING_SETUP:    {},
+	unix.SYS_IO_URING_REGISTER: {},
+	unix.SYS_EPOLL_WAIT:        {},
 }
 
 var udsSyscalls = seccomp.SyscallRules{

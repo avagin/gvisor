@@ -2516,3 +2516,10 @@ go_repository(
     sum = "h1:LhYJRs+L4fBtjZUfuSZIKGeVu0QRy8e5Xi7D17UxZ74=",
     version = "v1.2.0",
 )
+
+go_repository(
+    name = "com_github_iceber_iouring-go",
+    importpath = "github.com/iceber/iouring-go",
+    sum = "h1:OwV7phffPbNO1q8WRkO0yIlwCJUE5uV8vIuWYP7iUJM=",
+    version = "v0.0.0-20210726032807-b073cc83b2b8",
+)

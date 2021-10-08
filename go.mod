@@ -75,6 +75,7 @@ require (
 	github.com/gorilla/mux v1.7.2 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
+	github.com/iceber/iouring-go v0.0.0-20210726032807-b073cc83b2b8 // indirect
 	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/jmespath/go-jmespath v0.0.0-20160803190731-bd40a432e4c7 // indirect
 	github.com/klauspost/compress v1.11.13 // indirect

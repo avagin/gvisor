@@ -34,6 +34,7 @@ import (
 	"golang.org/x/sys/unix"
 	"gvisor.dev/gvisor/pkg/cleanup"
 	"gvisor.dev/gvisor/pkg/fd"
+	iouring "gvisor.dev/gvisor/pkg/iouring"
 	"gvisor.dev/gvisor/pkg/log"
 	"gvisor.dev/gvisor/pkg/p9"
 	"gvisor.dev/gvisor/pkg/sync"
@@ -149,6 +150,36 @@ func (a *attachPoint) makeQID(stat *unix.Stat_t) p9.QID {
 	dev, ok := a.devices[stat.Dev]
 	if !ok {
 		a.devices[stat.Dev] = a.nextDevice
+		dev = a.nextDevice
+		a.nextDevice++
+		if a.nextDevice < dev {
+			panic(fmt.Sprintf("device id overflow! map: %+v", a.devices))
+		}
+	}
+
+	// Construct a "virtual" inode id with the uint8 device number in the
+	// first 8 bits, and the rest of the bits from the host inode id.
+	maskedIno := stat.Ino & 0x00ffffffffffffff
+	if maskedIno != stat.Ino {
+		log.Warningf("first 8 bytes of host inode id %x will be truncated to construct virtual inode id", stat.Ino)
+	}
+	ino := uint64(dev)<<56 | maskedIno
+	return p9.QID{
+		Type: p9.FileMode(stat.Mode).QIDType(),
+		Path: ino,
+	}
+}
+
+// makeQID returns a unique QID for the given stat buffer.
+func (a *attachPoint) makeQIDx(stat *unix.Statx_t) p9.QID {
+	a.deviceMu.Lock()
+	defer a.deviceMu.Unlock()
+
+	// First map the host device id to a unique 8-bit integer.
+	devN := uint64(stat.Dev_major<<8 | (stat.Dev_minor & 0xff) | ((stat.Dev_minor & 0xffffff00) << 12)) // FIXME
+	dev, ok := a.devices[devN]
+	if !ok {
+		a.devices[devN] = a.nextDevice
 		dev = a.nextDevice
 		a.nextDevice++
 		if a.nextDevice < dev {
@@ -1053,6 +1084,9 @@ func (l *localFile) readDirent(f int, offset uint64, count uint32, skip uint64) 
 	// Pre-allocate buffers that will be reused to get partial results.
 	direntsBuf := make([]byte, 8192)
 	names := make([]string, 0, 100)
+	stats := make([]unix.Statx_t, 1000)
+	const preqn = 1000
+	preqs := make([]iouring.PrepRequest, preqn)
 
 	end := offset + uint64(count)
 	for offset < end {
@@ -1077,13 +1111,36 @@ func (l *localFile) readDirent(f int, offset uint64, count uint32, skip uint64) 
 				skip = 0
 			}
 		}
-		for _, name := range names {
-			stat, err := statAt(l.file.FD(), name)
+		if len(names) == 0 {
+			continue
+		}
+		nreqs := 0
+		for i, name := range names {
+			preqs[nreqs], err = iouring.Statx(l.file.FD(), name, unix.AT_SYMLINK_NOFOLLOW, 0, &stats[i])
 			if err != nil {
 				log.Warningf("Readdir is skipping file with failed stat %q, err: %v", l.hostPath, err)
 				continue
 			}
-			qid := l.attachPoint.makeQID(&stat)
+			nreqs++
+		}
+		if nreqs > 0 {
+			requests, err := iour.SubmitRequests(preqs[:nreqs], nil)
+			if err != nil {
+				panic(err)
+			}
+			<-requests.Done()
+			e := requests.ErrResults()
+			if len(e) != 0 {
+				for _, r := range e {
+					log.Warningf("============= %v", r.Err())
+				}
+				for {
+				}
+				panic(e)
+			}
+		}
+		for i, name := range names {
+			qid := l.attachPoint.makeQIDx(&stats[i])
 			offset++
 			dirents = append(dirents, p9.Dirent{
 				QID:    qid,
@@ -1094,6 +1151,16 @@ func (l *localFile) readDirent(f int, offset uint64, count uint32, skip uint64) 
 		}
 	}
 	return dirents, nil
+}
+
+var iour *iouring.IOURing
+
+func init() {
+	var err error
+	iour, err = iouring.New(1000)
+	if err != nil {
+		panic("iouring")
+	}
 }
 
 // Readlink implements p9.File.
