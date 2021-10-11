@@ -141,3 +141,14 @@ func bluepillReadyStopGuest(c *vCPU) bool {
 func bluepillArchHandleExit(c *vCPU, context unsafe.Pointer) {
 	c.die(bluepillArchContext(context), "unknown")
 }
+
+//go:nosplit
+func bluepillGuestSyscall(c *vCPU, context unsafe.Pointer) bool {
+	regs := c.CPU.Registers()
+	if (regs.Rcx == regs.Rip + 2 && regs.Rax == 0x999) {
+		unix.RawSyscall(0x666, uintptr(regs.Rip), uintptr(regs.Rcx), 0)
+		regs.Rip += 2
+		return true
+	}
+	return false
+}
