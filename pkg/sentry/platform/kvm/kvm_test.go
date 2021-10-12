@@ -490,11 +490,13 @@ func BenchmarkApplicationSyscall(b *testing.B) {
 func BenchmarkKernelSyscallOpt(b *testing.B) {
 	// Note that the target passed here is irrelevant, we never execute SwitchToUser.
 	applicationTest(b, true, testutil.AddrOfGetpid(), func(c *vCPU, regs *arch.Registers, pt *pagetables.PageTables) bool {
+		b.Logf("%p", &c.CPU);
 		// iteration does not include machine.Get() / machine.Put().
-		for  {
+		for i := 0; i < b.N; i++ {
 			bluepill(c)
 			unix.RawSyscall6(0x999, 1,2,3,4,5,6)
 		}
+//		redpill();
 		return false
 	})
 }

@@ -68,7 +68,7 @@ func bluepillArchEnter(context *arch.SignalContext64) *vCPU {
 //go:nosplit
 func (c *vCPU) KernelSyscall() {
 	regs := c.Registers()
-	if regs.Rax != ^uint64(0) {
+	if regs.Rax != 0x999 && regs.Rax != ^uint64(0) {
 		regs.Rip -= 2 // Rewind.
 	}
 	// N.B. Since KernelSyscall is called when the kernel makes a syscall,

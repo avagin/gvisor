@@ -103,16 +103,23 @@ TEXT ·Halt(SB),NOSPLIT,$0
 
 // See kernel_amd64.go.
 TEXT ·HaltAndWriteFSBase(SB),NOSPLIT,$8-8
+	MOVQ ENTRY_CPU_SELF(GS), AX
+	PUSHQ AX
 	HLT
+	POPQ AX
+	MOVQ PTRACE_RAX(AX), AX
+	TESTQ $0x999, AX
+	JEQ exit
 
 	// Restore FS_BASE.
-	MOVQ regs+0(FP), AX
+	MOVQ regs+8(FP), AX
 	MOVQ PTRACE_FS_BASE(AX), AX
 
 	PUSHQ AX  // First argument (FS_BASE)
 	CALL ·writeFS(SB)
 	POPQ AX
 
+exit:
 	RET
 
 // See entry_amd64.go.
