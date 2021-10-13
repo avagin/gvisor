@@ -187,5 +187,6 @@ func updateGlobalOnce(fd int) error {
 	physicalInit()
 	err := updateSystemValues(int(fd))
 	ring0.Init(cpuid.HostFeatureSet())
+
 	return err
 }
