@@ -28,7 +28,8 @@ import (
 
 // HaltAndWriteFSBase halts execution. On resume, it sets FS_BASE from the
 // value in regs.
-func HaltAndWriteFSBase(regs *arch.Registers)
+func HaltAndWriteFSBaseSyscall(regs *arch.Registers)
+func HaltAndWriteFSBaseFault(regs *arch.Registers)
 
 // init initializes architecture-specific state.
 func (k *Kernel) init(maxCPUs int) {

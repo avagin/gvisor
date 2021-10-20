@@ -503,12 +503,36 @@ func BenchmarkApplicationSyscall(b *testing.B) {
 	}
 }
 
+func BenchmarkKernelSyscallOpt(b *testing.B) {
+	// Note that the target passed here is irrelevant, we never execute SwitchToUser.
+	applicationTest(b, true, testutil.AddrOfGetpid(), func(c *vCPU, regs *arch.Registers, pt *pagetables.PageTables) bool {
+		// iteration does not include machine.Get() / machine.Put().
+		for i := 0; i < b.N; i++ {
+			bluepill(c)
+			unix.RawSyscall6(unix.SYS_RT_SIGACTION, 9999,2,3,4,5,6)
+		}
+		return false
+	})
+}
+
 func BenchmarkKernelSyscall(b *testing.B) {
 	// Note that the target passed here is irrelevant, we never execute SwitchToUser.
 	applicationTest(b, true, testutil.AddrOfGetpid(), func(c *vCPU, regs *arch.Registers, pt *pagetables.PageTables) bool {
 		// iteration does not include machine.Get() / machine.Put().
 		for i := 0; i < b.N; i++ {
-			testutil.Getpid()
+			bluepill(c)
+			unix.RawSyscall6(unix.SYS_RT_SIGPROCMASK, 99999,2,3,4,5,6)
+		}
+		return false
+	})
+}
+
+func BenchmarkHostSyscall(b *testing.B) {
+	// Note that the target passed here is irrelevant, we never execute SwitchToUser.
+	applicationTest(b, true, testutil.AddrOfGetpid(), func(c *vCPU, regs *arch.Registers, pt *pagetables.PageTables) bool {
+		// iteration does not include machine.Get() / machine.Put().
+		for i := 0; i < b.N; i++ {
+			unix.RawSyscall6(0x998, 1,2,3,4,5,6)
 		}
 		return false
 	})

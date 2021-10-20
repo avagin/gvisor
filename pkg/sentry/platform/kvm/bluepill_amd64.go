@@ -91,7 +91,7 @@ func (c *vCPU) KernelSyscall() {
 	// 6. We then restore FS_BASE and the full registers from vCPU.register
 	// to return from sysenter() back to the desired bluepill point from
 	// the host.
-	ring0.HaltAndWriteFSBase(regs) // escapes: no, reload host segment.
+	ring0.HaltAndWriteFSBaseSyscall(regs) // escapes: no, reload host segment.
 }
 
 // KernelException handles kernel exceptions.
@@ -108,7 +108,7 @@ func (c *vCPU) KernelException(vector ring0.Vector) {
 		regs.Rip = 0
 	}
 	// See above.
-	ring0.HaltAndWriteFSBase(regs) // escapes: no, reload host segment.
+	ring0.HaltAndWriteFSBaseFault(regs) // escapes: no, reload host segment.
 }
 
 // bluepillArchExit is called during bluepillEnter.

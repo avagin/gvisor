@@ -102,17 +102,47 @@ TEXT ·Halt(SB),NOSPLIT,$0
 	RET
 
 // See kernel_amd64.go.
-TEXT ·HaltAndWriteFSBase(SB),NOSPLIT,$8-8
+TEXT ·HaltAndWriteFSBaseSyscall(SB),NOSPLIT,$8-8
+	MOVQ ENTRY_CPU_SELF(GS), AX
+	PUSHQ AX
+	PUSHQ BX
+	MOVQ $0x888, BX
 	HLT
+	POPQ AX
+	POPQ BX
+	PUSHFQ
+	POPQ AX
+	TESTL $_RFLAGS_IOPL0, R11
+	JZ kernel
 
 	// Restore FS_BASE.
-	MOVQ regs+0(FP), AX
+	MOVQ regs+8(FP), AX
 	MOVQ PTRACE_FS_BASE(AX), AX
 
 	PUSHQ AX  // First argument (FS_BASE)
 	CALL ·writeFS(SB)
 	POPQ AX
+kernel:
+	RET
 
+
+// See kernel_amd64.go.
+TEXT ·HaltAndWriteFSBaseFault(SB),NOSPLIT,$8-8
+	MOVQ ENTRY_CPU_SELF(GS), AX
+	PUSHQ AX
+	PUSHQ BX
+	MOVQ $0x777, BX
+	HLT
+	POPQ AX
+	POPQ BX
+
+	// Restore FS_BASE.
+	MOVQ regs+8(FP), AX
+	MOVQ PTRACE_FS_BASE(AX), AX
+
+	PUSHQ AX  // First argument (FS_BASE)
+	CALL ·writeFS(SB)
+	POPQ AX
 	RET
 
 // See entry_amd64.go.
