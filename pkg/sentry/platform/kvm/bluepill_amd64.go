@@ -68,6 +68,10 @@ func bluepillArchEnter(context *arch.SignalContext64) *vCPU {
 //go:nosplit
 func (c *vCPU) KernelSyscall() {
 	regs := c.Registers()
+	if regs.Rax == unix.SYS_PREAD64 || regs.Rax == 0x666 {
+		ring0.SyscallHaltAndWriteFSBase(regs)
+		return
+	}
 	if regs.Rax != ^uint64(0) {
 		regs.Rip -= 2 // Rewind.
 	}

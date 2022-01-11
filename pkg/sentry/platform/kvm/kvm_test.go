@@ -508,6 +508,7 @@ func BenchmarkKernelSyscall(b *testing.B) {
 	applicationTest(b, true, testutil.AddrOfGetpid(), func(c *vCPU, regs *arch.Registers, pt *pagetables.PageTables) bool {
 		// iteration does not include machine.Get() / machine.Put().
 		for i := 0; i < b.N; i++ {
+			bluepill(c)
 			testutil.Getpid()
 		}
 		return false
@@ -521,6 +522,21 @@ func BenchmarkKernelVDSO(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			bluepill(c)
 			time.Now()
+		}
+		return false
+	})
+}
+
+func BenchmarkSyscallFastpath(b *testing.B) {
+	// Note that the target passed here is irrelevant, we never execute SwitchToUser.
+	applicationTest(b, true, testutil.AddrOfGetpid(), func(c *vCPU, regs *arch.Registers, pt *pagetables.PageTables) bool {
+		bluepill(c)
+		for i := 0; i < b.N; i++ {
+			bluepill(c)
+			r, _, e := unix.Syscall(0x666, 0x1111, 0x2222, 0x3333)
+			if e != unix.ENOSYS {
+				b.Fatalf("%v %v", r, e)
+			}
 		}
 		return false
 	})

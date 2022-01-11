@@ -29,6 +29,7 @@ import (
 // HaltAndWriteFSBase halts execution. On resume, it sets FS_BASE from the
 // value in regs.
 func HaltAndWriteFSBase(regs *arch.Registers)
+func SyscallHaltAndWriteFSBase(regs *arch.Registers)
 
 // init initializes architecture-specific state.
 func (k *Kernel) init(maxCPUs int) {
@@ -314,6 +315,7 @@ func startGo(c *CPU) {
 	// sysret instruction is designed to work (it assumes they follow).
 	wrmsr(_MSR_STAR, uintptr(uint64(Kcode)<<32|uint64(Ucode32)<<48))
 	wrmsr(_MSR_CSTAR, kernelFunc(addrOfSysenter()))
+	wrmsr(_MSR_IA32_SPEC_CTRL, 6)
 }
 
 // SetCPUIDFaulting sets CPUID faulting per the boolean value.

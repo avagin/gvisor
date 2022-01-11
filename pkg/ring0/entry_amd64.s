@@ -115,6 +115,13 @@ TEXT ·HaltAndWriteFSBase(SB),NOSPLIT,$8-8
 
 	RET
 
+// See kernel_amd64.go.
+TEXT ·SyscallHaltAndWriteFSBase(SB),NOSPLIT,$8-8
+	MOVQ $0, AX
+	MOVQ regs+0(FP), CX
+	BYTE $0x0F; BYTE $0x01; BYTE $0xC1;
+	RET
+
 // See entry_amd64.go.
 TEXT ·swapgs(SB),NOSPLIT,$0
 	SWAP_GS()
