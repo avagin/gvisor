@@ -733,7 +733,14 @@ TEXT ·El1_fiq(SB),NOSPLIT,$0
 
 // El1_error is the handler for El1_error.
 TEXT ·El1_error(SB),NOSPLIT,$0
+	KERNEL_ENTRY_FROM_EL1
+	WORD $0xd5385219        // MRS ESR_EL1, R25
+	AND $ESR_ELx_SERR_MASK, R25, R24
+	CMP $ESR_ELx_SERR_NMI, R24
+	BEQ el1_nmi
 	B ·Shutdown(SB)
+el1_nmi:
+	EXCEPTION_EL1(El0ErrNMI)
 
 // El0_sync is the handler for El0_sync.
 TEXT ·El0_sync(SB),NOSPLIT,$0

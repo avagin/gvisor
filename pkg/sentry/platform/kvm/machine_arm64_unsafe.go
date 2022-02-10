@@ -237,6 +237,7 @@ func (c *vCPU) loadSegments(tid uint64) {
 	atomic.StoreUint64(&c.tid, tid)
 }
 
+//go:nosplit
 func (c *vCPU) setOneRegister(reg *kvmOneReg) error {
 	if _, _, errno := unix.RawSyscall(
 		unix.SYS_IOCTL,
@@ -248,6 +249,7 @@ func (c *vCPU) setOneRegister(reg *kvmOneReg) error {
 	return nil
 }
 
+//go:nosplit
 func (c *vCPU) getOneRegister(reg *kvmOneReg) error {
 	if _, _, errno := unix.RawSyscall(
 		unix.SYS_IOCTL,

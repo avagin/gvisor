@@ -101,7 +101,6 @@ func bluepillStopGuest(c *vCPU) {
 //
 //go:nosplit
 func bluepillSigBus(c *vCPU) {
-	// vcpuSErrNMI is the event of system error to trigger sigbus.
 	vcpuSErrNMI := &kvmVcpuEvents{
 		exception: exception{
 			sErrPending: 1,
@@ -109,6 +108,7 @@ func bluepillSigBus(c *vCPU) {
 			sErrEsr:     _ESR_ELx_SERR_NMI,
 		},
 	}
+	// vcpuSErrNMI is the event of system error to trigger sigbus.
 
 	// Host must support ARM64_HAS_RAS_EXTN.
 	if _, _, errno := unix.RawSyscall( // escapes: no.
@@ -120,6 +120,20 @@ func bluepillSigBus(c *vCPU) {
 			throw("No ARM64_HAS_RAS_EXTN feature in host.")
 		}
 		throw("nmi sErr injection failed")
+	}
+
+	data :=   uint64(0)
+	reg   :=  kvmOneReg{
+		addr: uint64(uintptr(unsafe.Pointer(&data))),
+	}
+	reg.id = _KVM_ARM64_REGS_PSTATE
+	if err := c.getOneRegister(&reg); err != nil {
+		throw("get pstate")
+	}
+	_PSR_A_BIT      := uint64(0x00000100)
+	data &^= _PSR_A_BIT
+	if err := c.setOneRegister(&reg); err != nil {
+		throw("set pstate")
 	}
 }
 
