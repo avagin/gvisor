@@ -27,6 +27,7 @@ import (
 
 	"golang.org/x/sys/unix"
 	"gvisor.dev/gvisor/pkg/sentry/arch"
+	"gvisor.dev/gvisor/pkg/ring0"
 )
 
 //go:linkname throw runtime.throw
@@ -79,6 +80,21 @@ func bluepillGuestExit(c *vCPU, context unsafe.Pointer) {
 	default:
 		throw("invalid state")
 	}
+}
+
+var hexSyms = []byte("0123456789abcdef")
+
+//go:nosplit
+func printHex(title []byte, val uint64) {
+	var str[18]byte
+	for i := 0; i < 16; i++ {
+		str[16 - i] = hexSyms[val & 0xf]
+		val = val >> 4
+	}
+	str[0] = ' '
+	str[17] = '\n'
+	unix.RawSyscall(unix.SYS_WRITE, 2, uintptr(unsafe.Pointer(&title[0])), uintptr(len(title)));
+	unix.RawSyscall(unix.SYS_WRITE, 2, uintptr(unsafe.Pointer(&str)), 18);
 }
 
 // bluepillHandler is called from the signal stub.
@@ -184,6 +200,13 @@ func bluepillHandler(context unsafe.Pointer) {
 			c.die(bluepillArchContext(context), "debug")
 			return
 		case _KVM_EXIT_HLT:
+			if c.CPU.Vector() == uintptr(ring0.PageFault) && c.CPU.GetFaultAddr() > ring0.KernelStartAddress {
+				printHex([]byte("Vector="), uint64(c.CPU.Vector()))
+				printHex([]byte("FaultAddr="),  uint64(c.CPU.GetFaultAddr()))
+				printHex([]byte("rip="), uint64(c.CPU.Registers().Rip))
+				printHex([]byte("rsp="), uint64(c.CPU.Registers().Rsp))
+				throw("kernel fault")
+			}
 			bluepillGuestExit(c, context)
 			return
 		case _KVM_EXIT_MMIO:
@@ -204,6 +227,7 @@ func bluepillHandler(context unsafe.Pointer) {
 			c.die(bluepillArchContext(context), "entry failed")
 			return
 		default:
+			printHex([]byte("exitReason="),  uint64(c.runData.exitReason))
 			bluepillArchHandleExit(c, context)
 			return
 		}

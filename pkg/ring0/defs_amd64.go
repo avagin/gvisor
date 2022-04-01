@@ -129,6 +129,9 @@ type CPUArchState struct {
 	// exception.
 	errorType uintptr
 
+	vector uintptr
+	cr2 uintptr
+
 	*kernelEntry
 
 	// Copies of global variables, stored in CPU so that they can be used by
@@ -155,6 +158,14 @@ func (c *CPU) ErrorCode() (value uintptr, user bool) {
 func (c *CPU) ClearErrorCode() {
 	c.errorCode = 0 // No code.
 	c.errorType = 1 // User mode.
+}
+
+func (c *CPU) Vector() uintptr {
+	return c.vector
+}
+
+func (c *CPU) GetFaultAddr() uintptr {
+	return c.cr2
 }
 
 // SwitchArchOpts are embedded in SwitchOpts.
