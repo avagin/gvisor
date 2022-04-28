@@ -17,6 +17,10 @@
 
 package cpuid
 
+import (
+	"gvisor.dev/gvisor/pkg/log"
+)
+
 // Static is a static CPUID function.
 //
 // +stateify savable
@@ -43,11 +47,23 @@ func (fs FeatureSet) ToStatic() Static {
 		}
 	}
 
+	in := In{Eax: 0x80000000}
+	out := fs.Query(in)
+	extMax := int(out.Eax)
+	log.Debugf("The highest vale of extended CPUID: %x", extMax)
 	// Save all allowed extended functions.
 	for fn, allowed := range allowedExtendedFunctions {
-		if allowed {
+		if allowed && fn <= extMax {
 			in := In{Eax: uint32(fn) + uint32(extendedStart)}
-			s[in] = fs.Query(in)
+			n := uint32(1)
+			if cpuidFunction(in.Eax) == cacheProperties {
+				n = 4 // Data Cache, Instruction Cache, L2 and L3.
+			}
+			for i := uint32(0); i < n; i++ {
+				in.Ecx = i
+				s[in] = fs.Query(in)
+				log.Debugf("CPUID(%#v) -> %#v", in, s[in])
+			}
 		}
 	}
 
@@ -63,7 +79,7 @@ func (fs FeatureSet) ToStatic() Static {
 	}
 
 	// Save all cache information.
-	out := fs.Query(In{Eax: uint32(featureInfo)})
+	out = fs.Query(In{Eax: uint32(featureInfo)})
 	for i := uint32(0); i < out.Ecx; i++ {
 		in := In{Eax: uint32(intelDeterministicCacheParams), Ecx: i}
 		out := fs.Query(in)
@@ -126,5 +142,9 @@ func (s Static) Set(in In, out Out) {
 // Query implements Function.Query.
 func (s Static) Query(in In) Out {
 	in.normalize()
-	return s[in]
+	out, ok := s[in]
+	if !ok {
+		log.Warningf("Unknown CPUID(%#v)", in)
+	}
+	return out
 }

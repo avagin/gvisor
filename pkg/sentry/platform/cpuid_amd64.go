@@ -23,6 +23,7 @@ import (
 	"gvisor.dev/gvisor/pkg/context"
 	"gvisor.dev/gvisor/pkg/cpuid"
 	"gvisor.dev/gvisor/pkg/hostarch"
+	"gvisor.dev/gvisor/pkg/log"
 	"gvisor.dev/gvisor/pkg/sentry/arch"
 	"gvisor.dev/gvisor/pkg/usermem"
 )
@@ -58,11 +59,13 @@ func TryCPUIDEmulate(ctx context.Context, mm MemoryManager, ac *arch.Context64) 
 	if !bytes.Equal(inst, arch.CPUIDInstruction[:]) {
 		return false
 	}
-	fs := cpuid.FromContext(ctx)
-	out := fs.Function.Query(cpuid.In{
+	in := cpuid.In{
 		Eax: uint32(s.Regs.Rax),
 		Ecx: uint32(s.Regs.Rcx),
-	})
+	}
+	fs := cpuid.FromContext(ctx)
+	out := fs.Function.Query(in)
+	log.Debugf("CPUID(%#v) -> %#v", in, out)
 	s.Regs.Rax = uint64(out.Eax)
 	s.Regs.Rbx = uint64(out.Ebx)
 	s.Regs.Rcx = uint64(out.Ecx)

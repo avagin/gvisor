@@ -17,6 +17,7 @@ go_library(
         "//pkg/context",
         "//pkg/cpuid",
         "//pkg/hostarch",
+        "//pkg/log",
         "//pkg/seccomp",
         "//pkg/sentry/arch",
         "//pkg/sentry/hostmm",
