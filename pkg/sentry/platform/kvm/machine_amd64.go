@@ -478,6 +478,7 @@ func (m *machine) getMaxVCPU() {
 	} else {
 		m.maxVCPUs = int(maxVCPUs)
 	}
+	m.maxVCPUs = 128
 }
 
 func archPhysicalRegions(physicalRegions []physicalRegion) []physicalRegion {
