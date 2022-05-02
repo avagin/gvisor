@@ -152,13 +152,19 @@ func native(In) Out
 //
 //go:nosplit
 func (*Native) Query(in In) Out {
+	out := Out{} // All zeros.
 	if int(in.Eax) < len(allowedBasicFunctions) && allowedBasicFunctions[in.Eax] {
-		return native(in)
+		out = native(in)
+		log.Warningf("CPUID: %#v -> %#v", in, out)
+		return out
 	} else if in.Eax >= uint32(extendedStart) {
 		if l := int(in.Eax - uint32(extendedStart)); l < len(allowedExtendedFunctions) && allowedExtendedFunctions[l] {
-			return native(in)
+			out = native(in)
+			log.Warningf("CPUID: %#v -> %#v", in, out)
+			return out
 		}
 	}
+	log.Warningf("CPUID: Unknown: %#v -> %#v %#v", in, out, native(in))
 	return Out{} // All zeros.
 }
 

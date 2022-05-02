@@ -67,15 +67,15 @@ func (fs FeatureSet) ToStatic() Static {
 		}
 	}
 
-	// Save all features (may be redundant).
-	for feature := range allFeatures {
-		feature.set(s, fs.HasFeature(feature))
-	}
-
 	// Processor Extended State Enumeration.
 	for i := uint32(0); i < xSaveInfoNumLeaves; i++ {
 		in := In{Eax: uint32(xSaveInfo), Ecx: i}
 		s[in] = fs.Query(in)
+	}
+
+	// Save all features (may be redundant).
+	for feature := range allFeatures {
+		feature.set(s, fs.HasFeature(feature))
 	}
 
 	// Save all cache information.
@@ -87,6 +87,9 @@ func (fs FeatureSet) ToStatic() Static {
 		if CacheType(out.Eax&0xf) == cacheNull {
 			break
 		}
+	}
+	for in, out := range s {
+		log.Debugf("ToStatic: CPUID(%#v) -> %#v", in, out)
 	}
 
 	return s
@@ -146,5 +149,6 @@ func (s Static) Query(in In) Out {
 	if !ok {
 		log.Warningf("Unknown CPUID(%#v)", in)
 	}
+	log.Warningf("CPUID: static: %#v -> %#v", in, out)
 	return out
 }
