@@ -1,3 +1,9 @@
+set -x
+uname -a
+cat /proc/modules
+cat /proc/self/mountinfo
+docker into
+
 # Install packages we need. Docker must be installed and configured,
 # as should Go itself. We just install some extra bits and pieces.
 function install_pkgs() {
