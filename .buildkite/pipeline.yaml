@@ -50,3 +50,32 @@ steps:
       arch: "amd64"
       os: "ubuntu"
       kernel: "legacy"
+  # Integration tests.
+  - <<: *common
+    label: ":docker: Docker tests (cgroupv1)"
+    command: make docker-tests
+    agents:
+      arch: "amd64"
+      os: "ubuntu"
+      kernel: "legacy"
+  - <<: *common
+    label: ":goggles: Overlay tests"
+    command: make overlay-tests
+    agents:
+      arch: "amd64"
+      os: "ubuntu"
+      kernel: "legacy"
+  - <<: *common
+    label: ":safety_pin: Host network tests"
+    command: make hostnet-tests
+    agents:
+      arch: "amd64"
+      os: "ubuntu"
+      kernel: "legacy"
+  - <<: *common
+    label: ":satellite: SWGSO tests"
+    command: make swgso-tests
+    agents:
+      arch: "amd64"
+      os: "ubuntu"
+      kernel: "legacy"
