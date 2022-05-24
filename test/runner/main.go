@@ -107,9 +107,6 @@ func runTestCaseNative(testBin string, tc gtest.TestCase, t *testing.T) {
 	cmd.SysProcAttr = &unix.SysProcAttr{}
 
 	if *container {
-		// setup_container takes in its target argv as positional arguments.
-		cmd.Path = *setupContainerPath
-		cmd.Args = append([]string{cmd.Path}, cmd.Args...)
 		cmd.SysProcAttr = &unix.SysProcAttr{
 			Cloneflags: unix.CLONE_NEWUSER | unix.CLONE_NEWNET | unix.CLONE_NEWIPC | unix.CLONE_NEWUTS,
 			// Set current user/group as root inside the namespace.
@@ -133,6 +130,11 @@ func runTestCaseNative(testBin string, tc gtest.TestCase, t *testing.T) {
 
 	if specutils.HasCapabilities(capability.CAP_NET_ADMIN) {
 		cmd.SysProcAttr.Cloneflags |= unix.CLONE_NEWNET
+	}
+	if cmd.SysProcAttr.Cloneflags&unix.CLONE_NEWNET != 0 {
+		// setup_container takes in its target argv as positional arguments.
+		cmd.Path = *setupContainerPath
+		cmd.Args = append([]string{cmd.Path}, cmd.Args...)
 	}
 
 	if err := cmd.Run(); err != nil {
