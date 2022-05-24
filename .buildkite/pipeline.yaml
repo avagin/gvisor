@@ -79,3 +79,12 @@ steps:
       arch: "amd64"
       os: "ubuntu"
       kernel: "legacy"
+  # All system call tests.
+  - <<: *common
+    label: ":toolbox: System call tests (AMD64)"
+    command: make syscall-tests
+    parallelism: 20
+    agents:
+      arch: "amd64"
+      kvm: "true"
+      kernel: "legacy"

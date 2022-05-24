@@ -1,8 +1,9 @@
 set -x
 uname -a
-cat /proc/modules
-cat /proc/self/mountinfo
-docker info
+sduo cat /proc/modules
+sudo cat /proc/self/mountinfo
+sudo docker info
+sudo docker version
 
 # Install packages we need. Docker must be installed and configured,
 # as should Go itself. We just install some extra bits and pieces.
