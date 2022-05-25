@@ -31,7 +31,7 @@ PosixError SetupContainer() {
     std::cerr << "Cannot determine if we have CAP_NET_ADMIN." << std::endl;
     return have_net_admin.error();
   }
-  if (have_net_admin.ValueOrDie() && !IsRunningOnGvisor()) {
+  if (have_net_admin.ValueOrDie()) {
     PosixErrorOr<FileDescriptor> sockfd = Socket(AF_INET, SOCK_DGRAM, 0);
     if (!sockfd.ok()) {
       std::cerr << "Cannot open socket." << std::endl;

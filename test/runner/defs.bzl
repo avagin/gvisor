@@ -12,8 +12,9 @@ def _runner_test_impl(ctx):
         "  mkdir -p \"${TEST_UNDECLARED_OUTPUTS_DIR}\"",
         "  chmod a+rwx \"${TEST_UNDECLARED_OUTPUTS_DIR}\"",
         "fi",
-        "exec %s %s \"$@\" %s\n" % (
+        "exec %s --setup-container=%s %s \"$@\" %s\n" % (
             ctx.files.runner[0].short_path,
+            ctx.files.setup_container[0].short_path,
             " ".join(ctx.attr.runner_args),
             ctx.files.test[0].short_path,
         ),
@@ -44,6 +45,9 @@ _runner_test = rule(
         "runner_args": attr.string_list(),
         "data": attr.label_list(
             allow_files = True,
+        ),
+        "setup_container": attr.label(
+            default = "//test/runner/setup_container:setup_container",
         ),
     },
     test = True,
