@@ -100,6 +100,9 @@ go_library(
         "//pkg/marshal",
         "//pkg/marshal/primitive",
     ],
+    tags = [
+       "nogo_req",
+    ],
 )
 
 go_test(

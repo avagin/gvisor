@@ -264,6 +264,9 @@ def _nogo_aspect_impl(target, ctx):
     else:
         return [NogoInfo()]
 
+    if not ctx.attr._nogo_full[BuildSettingInfo].value and "nogo_req" not in ctx.rule.attr.tags:
+        return [NogoInfo()]
+
     # If we're using the "library" attribute, then we need to aggregate the
     # original library sources and dependencies into this target to perform
     # proper type analysis.
@@ -338,6 +341,10 @@ nogo_aspect = go_rule(
         "_nogo_stdlib": attr.label(
             default = "//tools/nogo:stdlib",
             cfg = "target",
+        ),
+        "_nogo_full": attr.label(
+            default = "//tools/nogo:full",
+            cfg = "host",
         ),
     },
 )
