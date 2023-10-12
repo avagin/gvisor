@@ -1,4 +1,5 @@
 load("//tools:defs.bzl", "default_platform", "go_library", "go_test", "most_shards", "platforms")
+load("defs.bzl", "container_platform_tests")
 
 package(
     default_applicable_licenses = ["//:license"],
@@ -40,8 +41,8 @@ go_library(
     ],
 )
 
-go_test(
-    name = "container_test",
+container_platform_tests(
+    name = "container",
     size = "large",
     srcs = [
         "console_test.go",
@@ -51,23 +52,12 @@ go_test(
         "shared_volume_test.go",
         "trace_test.go",
     ],
-    # Only run the default platform for the tsan test, which should
-    # be compatible. For non-tsan builds, run all platforms.
-    args = select({
-        "//conditions:default": [
-            "--test_platforms=%s" % ",".join([p for (p, tags) in platforms.items() if "manual" not in tags]) or default_platform,
-        ],
-        "//tools:gotsan": [
-            "--test_platforms=%s" % default_platform,
-        ],
-    }),
     data = [
         "//runsc",
         "//test/cmd/test_app",
     ],
     library = ":container",
     shard_count = most_shards,
-    tags = ["requires-kvm"],
     deps = [
         "//pkg/abi/linux",
         "//pkg/bits",
