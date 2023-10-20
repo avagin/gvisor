@@ -82,6 +82,11 @@ type CPU struct {
 
 	// hooks are kernel hooks.
 	hooks Hooks
+
+	SwitchOpts SwitchOpts
+	RetVector Vector
+	Switches int32
+	RetFaultAddr uintptr
 }
 
 // Registers returns a modifiable-copy of the kernel registers.

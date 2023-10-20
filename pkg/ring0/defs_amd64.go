@@ -95,6 +95,7 @@ type KernelArchState struct {
 type kernelEntry struct {
 	// stack is the stack used for interrupts on this CPU.
 	stack [256]byte
+	stack1 [512]byte
 
 	// scratch space for temporary usage.
 	scratch0 uint64

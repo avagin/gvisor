@@ -66,6 +66,7 @@ func (m *machine) initArchState() error {
 		debug.SetPanicOnFault(old)
 	}()
 
+	return nil
 	bluepill(c)
 	ring0.SetCPUIDFaulting(true)
 
@@ -140,8 +141,13 @@ func (c *vCPU) initArchState() error {
 	// Set the entrypoint for the kernel.
 	kernelUserRegs.RIP = uint64(ring0.AddrOfStart())
 	kernelUserRegs.RAX = uint64(reflect.ValueOf(&c.CPU).Pointer())
-	kernelUserRegs.RSP = c.StackTop()
+	kernelUserRegs.RSP = c.Stack1Top()
 	kernelUserRegs.RFLAGS = ring0.KernelFlagsSet
+
+	regs := c.CPU.Registers()
+	regs.Rip = uint64(ring0.AddrOfStart())
+	regs.Rsp = c.Stack1Top()
+	regs.Eflags = ring0.KernelFlagsSet
 
 	// Set the system registers.
 	if err := c.setSystemRegisters(&kernelSystemRegs); err != nil {
@@ -285,7 +291,8 @@ func nonCanonical(addr uint64, signal int32, info *linux.SignalInfo) (hostarch.A
 //go:nosplit
 func (c *vCPU) fault(signal int32, info *linux.SignalInfo) (hostarch.AccessType, error) {
 	bluepill(c) // Probably no-op, but may not be.
-	faultAddr := ring0.ReadCR2()
+//	faultAddr := ring0.ReadCR2()
+	faultAddr := c.CPU.RetFaultAddr
 	code, user := c.ErrorCode()
 	if !user {
 		// The last fault serviced by this CPU was not a user
@@ -346,10 +353,16 @@ func (c *vCPU) SwitchToUser(switchOpts ring0.SwitchOpts, info *linux.SignalInfo)
 	// from guest mode). So we need to ensure that between the bluepill
 	// call here and the switch call immediately below, no additional
 	// allocations occur.
-	entersyscall()
 	bluepill(c)
-	vector = c.CPU.SwitchToUser(switchOpts)
+	c.CPU.SwitchOpts = switchOpts;
+	entersyscall()
+	if c.CPU.Switches == 0 {
+		c.run()
+	}
+	c.run()
 	exitsyscall()
+	vector = c.CPU.RetVector
+//	vector = c.CPU.SwitchToUser(switchOpts)
 
 	switch vector {
 	case ring0.Syscall, ring0.SyscallInt80:

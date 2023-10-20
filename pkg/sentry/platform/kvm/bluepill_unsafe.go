@@ -80,6 +80,22 @@ func bluepillGuestExit(c *vCPU, context unsafe.Pointer) {
 	}
 }
 
+//go:nosplit
+func guestExit(c *vCPU) {
+	// Increment our counter.
+	c.guestExits.Add(1)
+
+	// Return to the vCPUReady state; notify any waiters.
+	user := c.state.Load() & vCPUUser
+	switch c.state.Swap(user) {
+	case user | vCPUGuest: // Expected case.
+	case user | vCPUGuest | vCPUWaiter:
+		c.notify()
+	default:
+		throw("invalid state")
+	}
+}
+
 var hexSyms = []byte("0123456789abcdef")
 
 //go:nosplit
@@ -95,6 +111,114 @@ func printHex(title []byte, val uint64) {
 	unix.RawSyscall(unix.SYS_WRITE, uintptr(unix.Stderr), uintptr(unsafe.Pointer(&str)), 18)
 }
 
+// +checkescape:all
+//
+//go:nosplit
+func (c *vCPU) run() {
+	// Mark this as guest mode.
+	switch c.state.Swap(vCPUGuest | vCPUUser) {
+	case vCPUUser: // Expected case.
+	case vCPUUser | vCPUWaiter:
+		c.notify()
+	default:
+		throw("invalid state")
+	}
+	for {
+		hostExitCounter.Increment()
+		_, _, errno := unix.RawSyscall(unix.SYS_IOCTL, uintptr(c.fd), KVM_RUN, 0) // escapes: no.
+		switch errno {
+		case 0: // Expected case.
+		case unix.EINTR:
+			interruptCounter.Increment()
+			// First, we process whatever pending signal
+			// interrupted KVM. Since we're in a signal handler
+			// currently, all signals are masked and the signal
+			// must have been delivered directly to this thread.
+			timeout := unix.Timespec{}
+			sig, _, errno := unix.RawSyscall6( // escapes: no.
+				unix.SYS_RT_SIGTIMEDWAIT,
+				uintptr(unsafe.Pointer(&bounceSignalMask)),
+				0,                                 // siginfo.
+				uintptr(unsafe.Pointer(&timeout)), // timeout.
+				8,                                 // sigset size.
+				0, 0)
+			if errno == unix.EAGAIN {
+				continue
+			}
+			if errno != 0 {
+				throw("error waiting for pending signal")
+			}
+			if sig != uintptr(bounceSignal) {
+				throw("unexpected signal")
+			}
+
+			// Check whether the current state of the vCPU is ready
+			// for interrupt injection. Because we don't have a
+			// PIC, we can't inject an interrupt while they are
+			// masked. We need to request a window if it's not
+			// ready.
+			if bluepillReadyStopGuest(c) {
+				// Force injection below; the vCPU is ready.
+				c.runData.exitReason = _KVM_EXIT_IRQ_WINDOW_OPEN
+			} else {
+				c.runData.requestInterruptWindow = 1
+				continue // Rerun vCPU.
+			}
+		case unix.EFAULT:
+			// If a fault is not serviceable due to the host
+			// backing pages having page permissions, instead of an
+			// MMIO exit we receive EFAULT from the run ioctl. We
+			// always inject an NMI here since we may be in kernel
+			// mode and have interrupts disabled.
+			bluepillSigBus(c)
+			continue // Rerun vCPU.
+		case unix.ENOSYS:
+			bluepillHandleEnosys(c)
+			continue
+		default:
+			throw("run failed")
+		}
+
+		switch c.runData.exitReason {
+		case _KVM_EXIT_EXCEPTION:
+			throw("exception")
+			return
+		case _KVM_EXIT_IO:
+			throw("I/O")
+			return
+		case _KVM_EXIT_INTERNAL_ERROR:
+			// An internal error is typically thrown when emulation
+			// fails. This can occur via the MMIO path below (and
+			// it might fail because we have multiple regions that
+			// are not mapped). We would actually prefer that no
+			// emulation occur, and don't mind at all if it fails.
+		case _KVM_EXIT_HYPERCALL:
+			throw("hypercall")
+			return
+		case _KVM_EXIT_DEBUG:
+			throw("debug")
+			return
+		case _KVM_EXIT_HLT:
+			//c.hltSanityCheck()
+			guestExit(c)
+			return
+		case _KVM_EXIT_MMIO:
+			throw("exit_mmio")
+			return
+		case _KVM_EXIT_IRQ_WINDOW_OPEN:
+			bluepillStopGuest(c)
+		case _KVM_EXIT_SHUTDOWN:
+			throw("shutdown")
+			return
+		case _KVM_EXIT_FAIL_ENTRY:
+			throw("entry failed")
+			return
+		default:
+			throw("default")
+			return
+		}
+	}
+}
 // bluepillHandler is called from the signal stub.
 //
 // The world may be stopped while this is executing, and it executes on the

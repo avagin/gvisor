@@ -24,7 +24,8 @@ import (
 )
 
 // bluepill enters guest mode.
-func bluepill(*vCPU)
+func bluepill(*vCPU) {
+}
 
 // sighandler is the signal entry point.
 func sighandler()

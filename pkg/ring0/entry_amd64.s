@@ -27,10 +27,10 @@
 #define CPU_HAS_XSAVE    CPU_ARCH_STATE+40 // +checkoffset . CPUArchState.hasXSAVE
 #define CPU_HAS_XSAVEOPT CPU_ARCH_STATE+41 // +checkoffset . CPUArchState.hasXSAVEOPT
 
-#define ENTRY_SCRATCH0   256 // +checkoffset . kernelEntry.scratch0
-#define ENTRY_STACK_TOP  264 // +checkoffset . kernelEntry.stackTop
-#define ENTRY_CPU_SELF   272 // +checkoffset . kernelEntry.cpuSelf
-#define ENTRY_KERNEL_CR3 280 // +checkoffset . kernelEntry.kernelCR3
+#define ENTRY_SCRATCH0   768 // +checkoffset . kernelEntry.scratch0
+#define ENTRY_STACK_TOP  776 // +checkoffset . kernelEntry.stackTop
+#define ENTRY_CPU_SELF   784 // +checkoffset . kernelEntry.cpuSelf
+#define ENTRY_KERNEL_CR3 792 // +checkoffset . kernelEntry.kernelCR3
 
 // Bits.
 #define _RFLAGS_IF    512  // +checkconst . _RFLAGS_IF
@@ -484,6 +484,7 @@ kernel:
 	MOVQ $0,  CPU_ERROR_TYPE(AX)                // Set error type to kernel.
 	MOVQ $0xffffffffffffffff,  CPU_VECTOR(AX)                // Set error type to kernel.
 
+	JMP fpsave_done
 	// Save floating point state. CPU.floatingPointState is a slice, so the
 	// first word of CPU.floatingPointState is a pointer to the destination
 	// array.

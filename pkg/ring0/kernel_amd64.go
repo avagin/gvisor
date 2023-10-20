@@ -153,6 +153,13 @@ func (c *CPU) StackTop() uint64 {
 	return uint64(kernelAddr(&c.stack[0])) + uint64(len(c.stack))
 }
 
+// Stack1Top returns the kernel's stack address.
+//
+//go:nosplit
+func (c *CPU) Stack1Top() uint64 {
+	return uint64(kernelAddr(&c.stack1[0])) + uint64(len(c.stack1))
+}
+
 // IDT returns the CPU's IDT base and limit.
 //
 //go:nosplit
@@ -309,6 +316,14 @@ func startGo(c *CPU) {
 	// sysret instruction is designed to work (it assumes they follow).
 	wrmsr(_MSR_STAR, uintptr(uint64(Kcode)<<32|uint64(Ucode32)<<48))
 	wrmsr(_MSR_CSTAR, kernelFunc(addrOfSysenter()))
+
+	c.Switches = 0x100
+	for {
+		c.Switches++
+		Halt()
+		c.RetVector = c.SwitchToUser(c.SwitchOpts)
+		c.RetFaultAddr = ReadCR2()
+	}
 }
 
 // SetCPUIDFaulting sets CPUID faulting per the boolean value.

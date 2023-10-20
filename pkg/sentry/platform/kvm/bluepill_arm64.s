@@ -48,7 +48,7 @@ TEXT ·setTLS(SB),NOSPLIT,$0-8
 	RET
 
 // See bluepill.go.
-TEXT ·bluepill(SB),NOSPLIT,$0
+TEXT ·bluepill1(SB),NOSPLIT,$0
 begin:
 	MOVD	arg+0(FP), R8
 	MOVD	$VCPU_CPU(R8), R9
