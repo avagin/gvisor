@@ -180,6 +180,9 @@ func TestClearRange(t *testing.T) {
 			bitmap.FlipRange(uint32(0), uint32(tt.bitmapSize))
 			bitmap.ClearRange(uint32(tt.clearRangeMin), uint32(tt.clearRangeMax+1))
 			clearedBitmapSlice := bitmap.ToSlice()
+			if len(clearedBitmapSlice) != int(bitmap.GetNumOnes()) {
+				t.Errorf("bitmap.GetNumOnes returns %d (expected %d)", bitmap.GetNumOnes(), len(clearedBitmapSlice))
+			}
 			clearedSlice := make([]uint32, 0)
 			for i := 0; i < tt.bitmapSize; i++ {
 				if i < tt.clearRangeMin || i > tt.clearRangeMax {
@@ -405,4 +408,60 @@ func TestGrow(t *testing.T) {
 	if !reflect.DeepEqual(bitmap.ToSlice(), want) {
 		t.Errorf("Grow() got: %v, want: %v", bitmap.ToSlice(), want)
 	}
+}
+
+func TestTableAdd(t *testing.T) {
+	tests := []struct {
+		name   string
+		size   uint32
+		addNum int
+	}{
+		{"Add with null bitmap.bitBlock", 0, 10},
+		{"Add without extending bitBlock", 64, 10},
+		{"Add without extending bitblock with margin number", 63, 64},
+		{"Add with extended one block", 1024, 1025},
+		{"Add with extended more then one block", 1024, 2048},
+		{"Add with extended more then one block", 1024, 1 << 25},
+		{"Add with extended more then one block", 1024, 1 << 30},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			bitmap := BitmapTable{}
+			bitmap.Add(uint32(tt.addNum))
+			bitmapSlice := bitmap.ToSlice()
+			if bitmapSlice[0] != uint32(tt.addNum) {
+				t.Errorf("%v, get number: %d, wanted: %d.", tt.name, bitmapSlice[0], tt.addNum)
+			}
+		})
+	}
+}
+
+func TestTableRemove(t *testing.T) {
+	bitmap := BitmapTable{}
+	firstSlice := generateFilledSlice(0, 1<<28, 500)
+	secondSlice := generateFilledSlice(1<<29, 1<<30, 500)
+	for i := 0; i < 50; i++ {
+		bitmap.Add(firstSlice[i])
+		bitmap.Add(secondSlice[i])
+	}
+
+	for i := 0; i < 50; i++ {
+		bitmap.Remove(firstSlice[i])
+	}
+	bitmapSlice := bitmap.ToSlice()
+	if !reflect.DeepEqual(bitmapSlice, secondSlice) {
+		t.Errorf("After Remove() firstSlice, remained slice: %v, wanted: %v", bitmapSlice, secondSlice)
+	}
+
+	for i := 0; i < 50; i++ {
+		bitmap.Remove(secondSlice[i])
+	}
+	bitmapSlice = bitmap.ToSlice()
+	emptySlice := make([]uint32, 0)
+	if !reflect.DeepEqual(bitmapSlice, emptySlice) {
+		t.Errorf("After Remove secondSlice, remained slice: %v, wanted: %v", bitmapSlice, emptySlice)
+	}
+
 }

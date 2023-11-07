@@ -15,8 +15,6 @@
 package kernel
 
 import (
-	"math"
-
 	"gvisor.dev/gvisor/pkg/bitmap"
 	"gvisor.dev/gvisor/pkg/sentry/vfs"
 )
@@ -46,7 +44,7 @@ func (f *FDTable) initNoLeakCheck() {
 func (f *FDTable) init() {
 	f.initNoLeakCheck()
 	f.InitRefs()
-	f.fdBitmap = bitmap.New(uint32(math.MaxUint16))
+	f.fdBitmap = bitmap.BitmapTable{}
 }
 
 const (

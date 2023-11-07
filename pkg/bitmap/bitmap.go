@@ -40,9 +40,13 @@ type Bitmap struct {
 // New create a new empty Bitmap.
 func New(size uint32) Bitmap {
 	b := Bitmap{}
+	b.Init(size)
+	return b
+}
+
+func (b *Bitmap) Init(size uint32) {
 	bSize := (size + 63) / 64
 	b.bitBlock = make([]uint64, bSize)
-	return b
 }
 
 // IsEmpty verifies whether the Bitmap is empty.
@@ -306,4 +310,141 @@ func (b *Bitmap) ToSlice() []uint32 {
 // GetNumOnes return the the number of ones in the Bitmap.
 func (b *Bitmap) GetNumOnes() uint32 {
 	return b.numOnes
+}
+
+const entrySize = 1 << 20
+const tableSize = 2 << 10
+
+// BitmapTable is a table of bitmaps that operates like one bitmap with the size of MaxBitEntryLimit.
+type BitmapTable struct {
+	entries [tableSize]Bitmap
+	numOnes uint32
+}
+
+// FirstZero returns the first unset bit from the range [start, ).
+func (t *BitmapTable) FirstZero(start uint32) (bit uint32, err error) {
+	i, j := start/entrySize, start%entrySize
+	for ; i < tableSize; i++ {
+		b := &t.entries[i]
+		if b.bitBlock == nil {
+			return uint32(i * entrySize), nil
+		}
+		j, err := b.FirstZero(j)
+		if err == nil {
+			return j + i*entrySize, nil
+		}
+		if s := uint32(b.Size()); s < entrySize {
+			return s, nil
+		}
+		j = 0
+	}
+	return MaxBitEntryLimit, fmt.Errorf("bitmap has no unset bits")
+}
+
+// FirstOne returns the first set bit from the range [start, )
+func (t *BitmapTable) FirstOne(start uint32) (bit uint32, err error) {
+	i, j := start/entrySize, start%entrySize
+	for ; i < tableSize; i++ {
+		b := &t.entries[i]
+		if b.bitBlock == nil {
+			j = 0
+			continue
+		}
+		j, err := b.FirstOne(j)
+		if err == nil {
+			return uint32(j + i*entrySize), nil
+		}
+		j = 0
+	}
+	return MaxBitEntryLimit, fmt.Errorf("bitmap has no set bits")
+}
+
+// Add idx to the BitmapTable.
+func (t *BitmapTable) Add(idx uint32) {
+	i, j := idx/entrySize, idx%entrySize
+	b := &t.entries[i]
+	prevNumOnes := b.GetNumOnes()
+	if b.bitBlock == nil {
+		b.Init(j + 1)
+	}
+	b.Add(j)
+	t.numOnes += b.GetNumOnes() - prevNumOnes
+}
+
+// Remove idx to the BitmapTable.
+func (t *BitmapTable) Remove(idx uint32) {
+	i, j := idx/entrySize, idx%entrySize
+	b := &t.entries[i]
+	if b.bitBlock == nil {
+		return
+	}
+	prevNumOnes := b.GetNumOnes()
+	b.Remove(j)
+	t.numOnes += b.GetNumOnes() - prevNumOnes
+}
+
+// ForEach calls `f` for each set bit in the range [start, end).
+//
+// If f returns false, ForEach stops the iteration.
+func (t *BitmapTable) ForEach(start, end uint32, f func(idx uint32) bool) {
+	for start < end {
+		i, j := start/entrySize, start%entrySize
+		b := &t.entries[i]
+		if b.bitBlock.GetNumOnes() == 0 {
+			start = (i + 1) * entrySize
+			continue
+		}
+		bitmapEnd := uint32(entrySize)
+		if (i+1)*entrySize > end {
+			bitmapEnd = end % entrySize
+		}
+		stop := false
+		b.ForEach(j, bitmapEnd, func(idx uint32) bool {
+			ret := f(idx + i*entrySize)
+			if !ret {
+				stop = true
+			}
+			return ret
+		})
+		if stop {
+			return
+		}
+		start += bitmapEnd
+	}
+}
+
+// GetNumOnes return the the number of ones in the Bitmap.
+func (t *BitmapTable) GetNumOnes() uint32 {
+	return t.numOnes
+}
+
+// Maximum return the largest value in the Bitmap.
+func (t *BitmapTable) Maximum() uint32 {
+	i := uint32(tableSize - 1)
+	for {
+		b := &t.entries[i]
+		if b.GetNumOnes() != 0 {
+			return b.Maximum() + i*entrySize
+		}
+		if i == 0 {
+			break
+		}
+		i--
+	}
+	return uint32(0)
+}
+
+// IsEmpty verifies whether the Bitmap is empty.
+func (t *BitmapTable) IsEmpty() bool {
+	return t.numOnes == 0
+}
+
+// ToSlice transform the BitmapTable into slice..
+func (t *BitmapTable) ToSlice() []uint32 {
+	bitmapSlice := make([]uint32, 0, t.numOnes)
+	t.ForEach(0, MaxBitEntryLimit, func(i uint32) bool {
+		bitmapSlice = append(bitmapSlice, i)
+		return true
+	})
+	return bitmapSlice
 }

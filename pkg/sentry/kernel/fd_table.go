@@ -16,7 +16,6 @@ package kernel
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -82,7 +81,7 @@ type FDTable struct {
 	mu fdTableMutex `state:"nosave"`
 
 	// fdBitmap shows which fds are already in use.
-	fdBitmap bitmap.Bitmap `state:"nosave"`
+	fdBitmap bitmap.BitmapTable `state:"nosave"`
 
 	// descriptorTable holds descriptors.
 	descriptorTable `state:".(map[int32]descriptor)"`
@@ -104,7 +103,7 @@ func (f *FDTable) saveDescriptorTable() map[int32]descriptor {
 func (f *FDTable) loadDescriptorTable(m map[int32]descriptor) {
 	ctx := context.Background()
 	f.initNoLeakCheck() // Initialize table.
-	f.fdBitmap = bitmap.New(uint32(math.MaxUint16))
+	f.fdBitmap = bitmap.BitmapTable{}
 	for fd, d := range m {
 		if fd < 0 {
 			panic(fmt.Sprintf("FD is not supposed to be negative. FD: %d", fd))
