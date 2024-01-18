@@ -56,7 +56,7 @@ func fillAddressSpace() (excludedRegions []region) {
 	// We exclude reservedMemory below from our physical memory size, so it
 	// needs to be dropped here as well. Otherwise, we could end up with
 	// physical addresses that are beyond what is mapped.
-	pSize := uintptr(1) << ring0.PhysicalAddressBits
+	pSize := uintptr(1) << 37 // ring0.PhysicalAddressBits
 	pSize -= reservedMemory
 
 	// Add specifically excluded regions; see excludeVirtualRegion.
@@ -106,6 +106,12 @@ func fillAddressSpace() (excludedRegions []region) {
 				current = 0
 				break
 			}
+			if current < 4096*16 {
+				log.Debugf("%x %x", filled, required)
+				for {
+				}
+				continue
+			}
 			// Attempt half the size; overflow not possible.
 			currentAddr, _ := hostarch.Addr(current >> 1).RoundUp()
 			current = uintptr(currentAddr)
@@ -134,7 +140,7 @@ func fillAddressSpace() (excludedRegions []region) {
 			})
 			// See comment above.
 			if filled != required {
-				required += faultBlockSize
+				//required += faultBlockSize
 			}
 		}
 	}
@@ -157,7 +163,7 @@ func computePhysicalRegions(excludedRegions []region) (physicalRegions []physica
 		if length == 0 {
 			return
 		}
-		if virtual == 0 {
+		if false && virtual == 0 {
 			virtual += hostarch.PageSize
 			length -= hostarch.PageSize
 		}

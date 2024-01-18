@@ -276,7 +276,7 @@ func newMachine(vm int) (*machine, error) {
 
 	// Install seccomp rules to trap runtime mmap system calls. They will
 	// be handled by seccompMmapHandler.
-	seccompMmapRules(m)
+	// seccompMmapRules(m)
 
 	// Apply the physical mappings. Note that these mappings may point to
 	// guest physical addresses that are not actually available. These
@@ -292,6 +292,11 @@ func newMachine(vm int) (*machine, error) {
 		return true // Keep iterating.
 	})
 
+	func() {
+		for _, r := range physicalRegions {
+			m.mapPhysical(r.physical, r.length, physicalRegions)
+		}
+	}()
 	// Ensure that the currently mapped virtual regions are actually
 	// available in the VM. Note that this doesn't guarantee no future
 	// faults, however it should guarantee that everything is available to
