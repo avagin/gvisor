@@ -1,0 +1,18 @@
+FROM ubuntu:22.04
+
+RUN apt-get update && \
+    apt-get install -y curl xz-utils make gcc flex bison automake autoconf
+
+ENV LTP_VERSION=20240129
+ENV LTP_SOURCE=https://github.com/linux-test-project/ltp/releases/download/${LTP_VERSION}/ltp-full-${LTP_VERSION}.tar.xz
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN curl -fsSL -o ltp-full-${LTP_VERSION}.tar.xz ${LTP_SOURCE}
+
+RUN cat ltp-full-${LTP_VERSION}.tar.xz | tar --absolute-names -xJ &&  mv /ltp-full-${LTP_VERSION} /ltp
+
+RUN cd /ltp \
+    && make autotools \
+    && ./configure \
+    && make -j "$(getconf _NPROCESSORS_ONLN)" all \
+    && make install
