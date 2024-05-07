@@ -49,9 +49,11 @@ fi
 set -x
 
 # Setup for parallelization with PARTITION and TOTAL_PARTITIONS.
-export PARTITION=${BUILDKITE_PARALLEL_JOB:-0}
-PARTITION=$((${PARTITION}+1)) # 1-indexed, but PARALLEL_JOB is 0-indexed.
-export TOTAL_PARTITIONS=${BUILDKITE_PARALLEL_JOB_COUNT:-1}
+if [ -z "${PARTITION:-}" ]; then
+	export PARTITION=${BUILDKITE_PARALLEL_JOB:-0}
+	PARTITION=$((${PARTITION}+1)) # 1-indexed, but PARALLEL_JOB is 0-indexed.
+	export TOTAL_PARTITIONS=${BUILDKITE_PARALLEL_JOB_COUNT:-1}
+fi
 
 if [[ "${BUILDKITE_BRANCH}" =~ ^test/ ]]; then
   # STABLE_VERSION depends on the most recent tag, so let's set the same tag
@@ -149,4 +151,10 @@ if [[ -n "${BUILDKITE_PIPELINE_ID}" && "${BUILDKITE_BRANCH}" =~ ^test/ ]]; then
     echo "Skip load-all-test-images tests"
     pipeline_add_env SKIP_LOADING_IMAGES 1
   fi
+fi
+
+export TEST_CHECK_UP_TO_DATE_FILE=/tmp/.gvisor-bazel-test-up-to-date
+
+if [[ -f "$TEST_CHECK_UP_TO_DATE_FILE" ]]; then
+	rm -rf "$TEST_CHECK_UP_TO_DATE_FILE"
 fi
