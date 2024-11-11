@@ -235,6 +235,11 @@ func (*PTrace) SupportsAddressSpaceIO() bool {
 	return false
 }
 
+// SupportsUserGS implements platform.Platform.SupportsUserGS
+func (*PTrace) SupportsUserGS() bool {
+	return true
+}
+
 // CooperativelySchedulesAddressSpace implements platform.Platform.CooperativelySchedulesAddressSpace.
 func (*PTrace) CooperativelySchedulesAddressSpace() bool {
 	return false

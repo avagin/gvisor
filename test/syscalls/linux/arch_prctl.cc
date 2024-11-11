@@ -42,6 +42,21 @@ TEST(ArchPrctlTest, GetSetFS) {
               SyscallFailsWithErrno(EPERM));
 }
 
+TEST(ArchPrctlTest, GetSetGS) {
+  uintptr_t orig;
+  const uintptr_t kNonCanonicalGsbase = 0x4141414142424242;
+  const uintptr_t kTestCanonicalGsbase = 0x4141414;
+
+  ASSERT_THAT(arch_prctl(ARCH_SET_GS, kTestCanonicalGsbase), SyscallSucceeds());
+  ASSERT_THAT(arch_prctl(ARCH_GET_GS, reinterpret_cast<uintptr_t>(&orig)),
+              SyscallSucceeds());
+  EXPECT_EQ(orig, kTestCanonicalGsbase);
+
+  // Trying to set GS.base to a non-canonical value should return an error.
+  ASSERT_THAT(arch_prctl(ARCH_SET_GS, kNonCanonicalGsbase),
+              SyscallFailsWithErrno(EPERM));
+}
+
 }  // namespace
 
 }  // namespace testing

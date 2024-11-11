@@ -45,9 +45,30 @@ func ArchPrctl(t *kernel.Task, sysno uintptr, args arch.SyscallArguments) (uintp
 		if !t.Arch().SetTLS(uintptr(fsbase)) {
 			return 0, nil, linuxerr.EPERM
 		}
-	case linux.ARCH_GET_GS, linux.ARCH_SET_GS:
-		t.Kernel().EmitUnimplementedEvent(t, sysno)
-		fallthrough
+	case linux.ARCH_GET_GS:
+		if !t.Kernel().SupportsUserGS() {
+			t.Kernel().EmitUnimplementedEvent(t, sysno)
+			return 0, nil, linuxerr.EINVAL
+		}
+		addr := args[1].Pointer()
+		gsbase := t.Arch().GS()
+		switch t.Arch().Width() {
+		case 8:
+			if _, err := primitive.CopyUint64Out(t, addr, uint64(gsbase)); err != nil {
+				return 0, nil, err
+			}
+		default:
+			return 0, nil, linuxerr.ENOSYS
+		}
+	case linux.ARCH_SET_GS:
+		if !t.Kernel().SupportsUserGS() {
+			t.Kernel().EmitUnimplementedEvent(t, sysno)
+			return 0, nil, linuxerr.EINVAL
+		}
+		gsbase := args[1].Uint64()
+		if !t.Arch().SetGS(uintptr(gsbase)) {
+			return 0, nil, linuxerr.EPERM
+		}
 	default:
 		return 0, nil, linuxerr.EINVAL
 	}

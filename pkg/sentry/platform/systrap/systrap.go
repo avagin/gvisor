@@ -367,6 +367,11 @@ func (*Systrap) SupportsAddressSpaceIO() bool {
 	return false
 }
 
+// SupportsUserGS implements platform.Platform.SupportsUserGS
+func (*Systrap) SupportsUserGS() bool {
+	return false
+}
+
 // CooperativelySchedulesAddressSpace implements platform.Platform.CooperativelySchedulesAddressSpace.
 func (*Systrap) CooperativelySchedulesAddressSpace() bool {
 	return false
