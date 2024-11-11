@@ -84,6 +84,10 @@ type Platform interface {
 	// platform.
 	MaxUserAddress() hostarch.Addr
 
+	// SupportsUserGS returns true if user proceses are allowed to change
+	// the base for the GS register.
+	SupportsUserGS() bool
+
 	// NewAddressSpace returns a new memory context for this platform.
 	//
 	// If mappingsID is not nil, the platform may assume that (1) all calls

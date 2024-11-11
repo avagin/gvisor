@@ -171,6 +171,22 @@ func (c *Context64) SetTLS(value uintptr) bool {
 	return true
 }
 
+// GS returns the 64-bit base for the GS register.
+func (c *Context64) GS() uintptr {
+	return uintptr(c.Regs.Gs_base)
+}
+
+// SetGS sets the 64-bit base for the GS register.
+func (c *Context64) SetGS(value uintptr) bool {
+	if !isValidSegmentBase(uint64(value)) {
+		return false
+	}
+
+	c.Regs.Fs = 0
+	c.Regs.Gs_base = uint64(value)
+	return true
+}
+
 // SetOldRSeqInterruptedIP implements Context.SetOldRSeqInterruptedIP.
 func (c *Context64) SetOldRSeqInterruptedIP(value uintptr) {
 	c.Regs.R10 = uint64(value)

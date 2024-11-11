@@ -138,6 +138,11 @@ func (*KVM) SupportsAddressSpaceIO() bool {
 	return false
 }
 
+// SupportsUserGS implements platform.Platform.SupportsUserGS.
+func (*KVM) SupportsUserGS() bool {
+	return false
+}
+
 // CooperativelySchedulesAddressSpace implements platform.Platform.CooperativelySchedulesAddressSpace.
 func (*KVM) CooperativelySchedulesAddressSpace() bool {
 	return false
