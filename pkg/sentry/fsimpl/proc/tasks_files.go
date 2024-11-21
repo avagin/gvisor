@@ -40,6 +40,7 @@ type selfSymlink struct {
 	kernfs.InodeNotAnonymous
 	kernfs.InodeSymlink
 	kernfs.InodeWatches
+	kernfs.InodeWithoutSideInvalidateAction
 
 	pidns *kernel.PIDNamespace
 }
@@ -83,6 +84,7 @@ type threadSelfSymlink struct {
 	kernfs.InodeNotAnonymous
 	kernfs.InodeSymlink
 	kernfs.InodeWatches
+	kernfs.InodeWithoutSideInvalidateAction
 
 	pidns *kernel.PIDNamespace
 }

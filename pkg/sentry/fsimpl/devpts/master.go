@@ -39,6 +39,7 @@ type masterInode struct {
 	kernfs.InodeNotAnonymous
 	kernfs.InodeNotDirectory
 	kernfs.InodeNotSymlink
+	kernfs.InodeWithoutSideInvalidateAction
 	kernfs.InodeWatches
 
 	locks vfs.FileLocks

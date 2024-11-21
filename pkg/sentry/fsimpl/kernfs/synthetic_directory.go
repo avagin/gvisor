@@ -37,6 +37,7 @@ type syntheticDirectory struct {
 	InodeWatches
 	OrderedChildren
 	syntheticDirectoryRefs
+	InodeWithoutSideInvalidateAction
 
 	locks vfs.FileLocks
 }

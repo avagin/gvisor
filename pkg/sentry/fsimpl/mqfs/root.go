@@ -36,6 +36,7 @@ type rootInode struct {
 	kernfs.InodeTemporary
 	kernfs.InodeWatches
 	kernfs.OrderedChildren
+	kernfs.InodeWithoutSideInvalidateAction
 
 	locks vfs.FileLocks
 }

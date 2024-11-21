@@ -31,7 +31,7 @@ import (
 const (
 	// Name is the default filesystem name.
 	Name                     = "proc"
-	defaultMaxCachedDentries = uint64(1000)
+	defaultMaxCachedDentries = uint64(10)
 )
 
 // FilesystemType is the factory class for procfs.

@@ -735,6 +735,7 @@ type StaticDirectory struct {
 	InodeWatches
 	OrderedChildren
 	StaticDirectoryRefs
+	InodeWithoutSideInvalidateAction
 
 	locks  vfs.FileLocks
 	fdOpts GenericDirectoryFDOptions
@@ -845,3 +846,15 @@ type InodeNotAnonymous struct{}
 func (*InodeNotAnonymous) Anonymous() bool {
 	return false
 }
+
+// InodeWithoutSideInvalidateAction partially implements Inode that are not
+// invalidated from outside of its file system.
+//
+// +stateify savable
+type InodeWithoutSideInvalidateAction struct {}
+
+// AddInvalidateCallback implements Inode.AddInvalidateCallback.
+func (*InodeWithoutSideInvalidateAction) AddInvalidateCallback(d *Dentry) {}
+
+// RemoveInvalidateCallback implements Remove.AddInvalidateCallback.
+func (*InodeWithoutSideInvalidateAction) RemoveInvalidateCallback(d *Dentry) {}

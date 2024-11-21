@@ -36,6 +36,7 @@ import (
 	"gvisor.dev/gvisor/pkg/sentry/seccheck"
 	pb "gvisor.dev/gvisor/pkg/sentry/seccheck/points/points_go_proto"
 	"gvisor.dev/gvisor/pkg/waiter"
+	"gvisor.dev/gvisor/pkg/context"
 )
 
 // TaskExitState represents a step in the task exit path.
@@ -756,6 +757,37 @@ func (t *Task) exitNotifyLocked(fromPtraceDetach bool) {
 			// Do not clear t.parent. It may be still be needed after the task has exited
 			// (for example, to perform ptrace access checks on /proc/[pid] files).
 		}
+		t.execOnDestroyActions()
+	}
+}
+
+// RegisterOnDestroyAction register the action which will be executed when the
+// test is destroyed.
+func (t *Task) RegisterOnDestroyAction(key any, act func(ctx context.Context)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.onDestroyAction == nil {
+		return
+	}
+	t.onDestroyAction[key] = act
+}
+
+// UnregisterOnDestroyAction unregister the action that has been added with
+// RegisterOnDestroyAction.
+func (t *Task) UnregisterOnDestroyAction(key any) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	delete(t.onDestroyAction, key)
+}
+
+func (t *Task) execOnDestroyActions() {
+	t.mu.Lock()
+	actions := t.onDestroyAction
+	t.onDestroyAction = nil
+	t.mu.Unlock()
+
+	for _, act := range(actions) {
+		act(t)
 	}
 }
 

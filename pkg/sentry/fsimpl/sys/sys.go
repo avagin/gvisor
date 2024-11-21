@@ -383,6 +383,7 @@ type dir struct {
 	kernfs.InodeNotSymlink
 	kernfs.InodeTemporary
 	kernfs.InodeWatches
+	kernfs.InodeWithoutSideInvalidateAction
 	kernfs.OrderedChildren
 
 	locks vfs.FileLocks

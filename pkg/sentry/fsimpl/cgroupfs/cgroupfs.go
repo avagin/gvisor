@@ -511,6 +511,7 @@ type dir struct {
 	kernfs.InodeNotSymlink
 	kernfs.InodeWatches
 	kernfs.OrderedChildren
+	kernfs.InodeWithoutSideInvalidateAction
 	implStatFS
 
 	locks vfs.FileLocks

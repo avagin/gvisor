@@ -34,6 +34,7 @@ import (
 	"gvisor.dev/gvisor/pkg/sentry/vfs"
 	"gvisor.dev/gvisor/pkg/sync"
 	"gvisor.dev/gvisor/pkg/waiter"
+	"gvisor.dev/gvisor/pkg/context"
 )
 
 // TaskOrigin indicates how the task was initially created.
@@ -630,6 +631,9 @@ type Task struct {
 
 	// Origin is the origin of the task.
 	Origin TaskOrigin
+
+	// +checklocks:mu
+	onDestroyAction map[any]func(ctx context.Context)
 }
 
 // Task related metrics

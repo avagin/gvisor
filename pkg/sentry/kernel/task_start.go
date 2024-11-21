@@ -175,6 +175,7 @@ func (ts *TaskSet) newTask(ctx context.Context, cfg *TaskConfig) (*Task, error) 
 		userCounters:   cfg.UserCounters,
 		sessionKeyring: cfg.SessionKeyring,
 		Origin:         cfg.Origin,
+		onDestroyAction: make(map[any]func(ctx context.Context)),
 	}
 	t.netns = cfg.NetworkNamespace
 	t.creds.Store(cfg.Credentials)

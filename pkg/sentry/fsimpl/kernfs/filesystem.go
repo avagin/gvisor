@@ -109,7 +109,27 @@ func (fs *Filesystem) revalidateChildLocked(ctx context.Context, vfsObj *vfs.Vir
 	parent.dirMu.Lock()
 	defer parent.dirMu.Unlock() // may be temporarily unlocked and re-locked below
 	child := parent.children[name]
-	for child != nil {
+	for  {
+		if child == nil {
+			// Dentry isn't cached; it either doesn't exist or failed revalidation.
+			// Attempt to resolve it via Lookup.
+			childInode, err := parent.inode.Lookup(ctx, name)
+			if err != nil {
+				return nil, err
+			}
+			var newChild Dentry
+			newChild.Init(fs, childInode) // childInode's ref is transferred to newChild.
+			parent.insertChildLocked(name, &newChild)
+			child = &newChild
+
+			// Drop the ref on newChild. This will cause the dentry to get pruned
+			// from the dentry tree by the end of current filesystem operation
+			// (before returning to the VFS layer) if another ref is not picked on
+			// this dentry.
+			if !childInode.Keep() {
+				fs.deferDecRef(&newChild)
+			}
+		}
 		// Cached dentry exists, revalidate.
 		if child.inode.Valid(ctx, parent, name) {
 			break
@@ -120,26 +140,7 @@ func (fs *Filesystem) revalidateChildLocked(ctx context.Context, vfsObj *vfs.Vir
 		parent.dirMu.Lock()
 		// Check for concurrent insertion of a new cached dentry.
 		child = parent.children[name]
-	}
-	if child == nil {
-		// Dentry isn't cached; it either doesn't exist or failed revalidation.
-		// Attempt to resolve it via Lookup.
-		childInode, err := parent.inode.Lookup(ctx, name)
-		if err != nil {
-			return nil, err
-		}
-		var newChild Dentry
-		newChild.Init(fs, childInode) // childInode's ref is transferred to newChild.
-		parent.insertChildLocked(name, &newChild)
-		child = &newChild
 
-		// Drop the ref on newChild. This will cause the dentry to get pruned
-		// from the dentry tree by the end of current filesystem operation
-		// (before returning to the VFS layer) if another ref is not picked on
-		// this dentry.
-		if !childInode.Keep() {
-			fs.deferDecRef(&newChild)
-		}
 	}
 	return child, nil
 }

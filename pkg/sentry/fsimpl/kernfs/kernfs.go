@@ -313,6 +313,36 @@ func (d *Dentry) decRefLocked(ctx context.Context) {
 	}
 }
 
+func (d *Dentry) Invalidate(ctx context.Context) {
+	d.fs.mu.Lock()
+	defer d.fs.mu.Unlock()
+	if d.vfsd.IsDead() {
+		return
+	}
+	parent := d.parent.Load()
+	if parent == nil {
+		return
+	}
+	var child *Dentry
+	defer func() {
+		if child != nil {
+			d.fs.invalidateRemovedChildLocked(ctx, d.fs.vfsfs.VirtualFilesystem(), child)
+		}
+	}()
+	parent.dirMu.Lock()
+	defer parent.dirMu.Unlock()
+	if parent.vfsd.IsDead() {
+		return
+	}
+	child = parent.children[d.name]
+	if child != d {
+		child = nil
+		return
+	}
+	delete(parent.children, child.name)
+
+}
+
 // cacheLocked should be called after d's reference count becomes 0. The ref
 // count check may happen before acquiring d.fs.mu so there might be a race
 // condition where the ref count is increased again by the time the caller
@@ -447,6 +477,7 @@ func (d *Dentry) destroy(ctx context.Context) {
 		panic("dentry.destroy() called with references on the dentry")
 	}
 
+	d.inode.RemoveInvalidateCallback(d)
 	d.inode.DecRef(ctx) // IncRef from Init.
 
 	refs.Unregister(d)
@@ -501,6 +532,7 @@ func (d *Dentry) Init(fs *Filesystem, inode Inode) {
 		d.flags = atomicbitops.FromUint32(d.flags.RacyLoad() | dflagsIsSymlink)
 	}
 	refs.Register(d)
+	inode.AddInvalidateCallback(d)
 }
 
 // VFSDentry returns the generic vfs dentry for this kernfs dentry.
@@ -728,6 +760,9 @@ type Inode interface {
 	// Anonymous indicates that the Inode is anonymous. It will never have
 	// a name or parent.
 	Anonymous() bool
+
+	AddInvalidateCallback(d *Dentry)
+	RemoveInvalidateCallback(d *Dentry)
 }
 
 type inodeRefs interface {
