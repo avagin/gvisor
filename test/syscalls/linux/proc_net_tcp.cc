@@ -149,7 +149,7 @@ TEST(ProcNetTCP, Exists) {
     // Should be just the header since we don't have any tcp sockets yet.
     EXPECT_EQ(content, header_line);
   } else {
-    // On a general linux machine, we could have abitrary sockets on the system,
+    // On a general linux machine, we could have arbitrary sockets on the system,
     // so just check the header.
     EXPECT_THAT(content, ::testing::StartsWith(header_line));
   }
@@ -385,7 +385,7 @@ TEST(ProcNetTCP6, Exists) {
     // Should be just the header since we don't have any tcp sockets yet.
     EXPECT_EQ(content, header_line);
   } else {
-    // On a general linux machine, we could have abitrary sockets on the system,
+    // On a general linux machine, we could have arbitrary sockets on the system,
     // so just check the header.
     EXPECT_THAT(content, ::testing::StartsWith(header_line));
   }
