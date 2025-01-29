@@ -35,7 +35,7 @@ PosixErrorOr<uint32_t> NetlinkPortID(int fd);
 
 // Send the passed request and call fn on all response netlink messages.
 //
-// To be used on requests with NLM_F_MULTI responses.
+// To be used on requests with NLM_F_MULTI reponses.
 PosixError NetlinkRequestResponse(
     const FileDescriptor& fd, void* request, size_t len,
     const std::function<void(const struct nlmsghdr* hdr)>& fn,
@@ -43,7 +43,7 @@ PosixError NetlinkRequestResponse(
 
 // Call fn on all response netlink messages.
 //
-// To be used on requests with NLM_F_MULTI responses.
+// To be used on requests with NLM_F_MULTI reponses.
 PosixError NetlinkResponse(
     const FileDescriptor& fd,
     const std::function<void(const struct nlmsghdr* hdr)>& fn,
@@ -51,7 +51,7 @@ PosixError NetlinkResponse(
 
 // Send the passed request and call fn on all response netlink messages.
 //
-// To be used on requests without NLM_F_MULTI responses.
+// To be used on requests without NLM_F_MULTI reponses.
 PosixError NetlinkRequestResponseSingle(
     const FileDescriptor& fd, void* request, size_t len,
     const std::function<void(const struct nlmsghdr* hdr)>& fn);

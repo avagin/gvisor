@@ -83,7 +83,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to create sniffer: %w", err)
 	}
-	// Suppress text output.
+	// Supress text output.
 	sniffer.LogPackets.Store(0)
 
 	scanner := bufio.NewScanner(input)
