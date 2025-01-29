@@ -56,7 +56,7 @@ func TestIsValidSlice(t *testing.T) {
 			err:   ErrInvalidSlice,
 		},
 		{
-			name:  "has path separators",
+			name:  "has path seperators",
 			slice: "systemd.slice/child.slice",
 			err:   ErrInvalidSlice,
 		},

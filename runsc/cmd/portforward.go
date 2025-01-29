@@ -79,7 +79,7 @@ OPTIONS:
 
 // SetFlags implements subcommands.Command.SetFlags.
 func (p *PortForward) SetFlags(f *flag.FlagSet) {
-	f.StringVar(&p.stream, "stream", "", "Stream mode - a Unix domain socket")
+	f.StringVar(&p.stream, "stream", "", "Stream mode - a Unix doman socket")
 }
 
 // Execute implements subcommands.Command.Execute.

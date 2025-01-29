@@ -33,7 +33,7 @@ var (
 )
 
 // hostInetConn allows reading and writing to a local host socket for hostinet.
-// hostInetConn implements proxyConn.
+// hostInetConn implments proxyConn.
 type hostInetConn struct {
 	// wq is the WaitQueue registered with fdnotifier for this fd.
 	wq waiter.Queue

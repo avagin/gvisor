@@ -309,10 +309,10 @@ TEST(MemfdTest, SealWriteWithWrite) {
               SyscallSucceedsWithValue(kPageSize));
   ASSERT_THAT(fcntl(memfd.get(), F_ADD_SEALS, F_SEAL_WRITE), SyscallSucceeds());
 
-  // Attempting to write at the end of the file fails.
+  // Attemping to write at the end of the file fails.
   EXPECT_THAT(write(memfd.get(), buf.data(), 1), SyscallFailsWithErrno(EPERM));
 
-  // Attempting to overwrite an existing part of the memfd fails.
+  // Attemping to overwrite an existing part of the memfd fails.
   EXPECT_THAT(pwrite(memfd.get(), buf.data(), 1, 0),
               SyscallFailsWithErrno(EPERM));
   EXPECT_THAT(pwrite(memfd.get(), buf.data(), buf.size() / 2, kPageSize / 2),
