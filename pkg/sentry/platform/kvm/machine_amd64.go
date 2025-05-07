@@ -165,6 +165,8 @@ func (c *vCPU) initArchState() error {
 		})
 	}
 
+	log.Debugf("==== cr4 %x", c.CR4())
+
 	return nil
 }
 

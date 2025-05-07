@@ -82,6 +82,9 @@ func (c *vCPU) hltSanityCheck() {
 	printHex([]byte("FaultAddr = "), uint64(c.CPU.FaultAddr()))
 	printHex([]byte("rip       = "), uint64(c.CPU.Registers().Rip))
 	printHex([]byte("rsp       = "), uint64(c.CPU.Registers().Rsp))
+	printHex([]byte("rdi       = "), uint64(c.CPU.Registers().Rdi))
+	printHex([]byte("rax       = "), uint64(c.CPU.Registers().Rax))
+	printHex([]byte("rdx       = "), uint64(c.CPU.Registers().Rdx))
 	throw("fault")
 }
 

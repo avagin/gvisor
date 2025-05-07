@@ -424,6 +424,10 @@ func (fs FeatureSet) AMXExtendedStateSize() uint {
 	return 0
 }
 
+func Getbv() uint64 {
+	return xgetbv(0)
+}
+
 // ValidXCR0Mask returns the valid bits in control register XCR0.
 //
 // Always exclude AMX bits, because we do not support it.

@@ -48,6 +48,10 @@ func (k *KVM) SeccompInfo() platform.SeccompInfo {
 					seccomp.NonNegativeFD{},
 					seccomp.EqualTo(KVM_SET_REGS),
 				},
+				seccomp.PerArg{
+					seccomp.NonNegativeFD{},
+					seccomp.EqualTo(KVM_GET_SREGS),
+				},
 			},
 			unix.SYS_MEMBARRIER: seccomp.PerArg{
 				seccomp.EqualTo(linux.MEMBARRIER_CMD_PRIVATE_EXPEDITED),

@@ -77,6 +77,13 @@ restart:
 		FullRestore:        ac.FullRestore(),
 	}
 
+	ctx.Debugf("==== &fpstate: %p", ac.FloatingPointData().BytePointer())
+	ctx.Debugf("==== fpstate: %#v", ac.FloatingPointData())
+	{
+		sregs := systemRegs{}
+		errno := cpu.getSystemRegisters(&sregs)
+		ctx.Debugf("==== errno %d sregs %#v", errno, sregs)
+	}
 	// Take the blue pill.
 	at, err := cpu.SwitchToUser(switchOpts, &c.info)
 

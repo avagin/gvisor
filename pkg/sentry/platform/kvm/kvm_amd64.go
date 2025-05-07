@@ -19,6 +19,7 @@ package kvm
 
 import (
 	"gvisor.dev/gvisor/pkg/cpuid"
+	"gvisor.dev/gvisor/pkg/log"
 	"gvisor.dev/gvisor/pkg/ring0"
 	"gvisor.dev/gvisor/pkg/sentry/arch/fpu"
 )
@@ -241,6 +242,13 @@ func updateGlobalOnce(fd int) error {
 	if cpuid.HostFeatureSet().UseXsave() {
 		cpuid.X86FeatureOSXSAVE.Set(s)
 	}
+	hfs := cpuid.HostFeatureSet()
+	log.Debugf("==== UseXsave: %v UseXsaveopt %v", hfs.UseXsave(), hfs.UseXsaveopt())
+	size, align := hfs.ExtendedStateSize()
+	log.Debugf("==== ExtendedStateSize: size %d align %d", size, align)
+	xcr0 := cpuid.Getbv()
+	log.Debugf("==== xcr0: %x", xcr0)
+	log.Debugf("==== xcr0_mask: %x", fs.ValidXCR0Mask())
 	// Explicitly disable nested virtualization. Since we don't provide
 	// any virtualization APIs, there is no need to enable this feature.
 	cpuid.X86FeatureVMX.Unset(s)
