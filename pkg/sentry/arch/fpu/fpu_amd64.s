@@ -26,7 +26,7 @@
 // AMX regions.
 // TODO(gvisor.dev/issues/9896): Implement AMX support.
 // TODO(gvisor.dev/issues/10087): Implement PKRU support.
-#define XCR0_DISABLED_MASK ((1 << 9) | (1 << 17) | (1 << 18))
+#define XCR0_DISABLED_MASK ((1 << 3) | (1 << 4) | (1 << 9) | (1 << 17) | (1 << 18))
 #define XCR0_EAX (0xffffffff ^ XCR0_DISABLED_MASK)
 #define XCR0_EDX 0xffffffff
 
