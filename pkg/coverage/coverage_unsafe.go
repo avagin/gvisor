@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build kcov && opensource
-// +build kcov,opensource
-
 // Package coverage provides an interface through which Go coverage data can
 // be collected, converted to kcov format, and exposed to userspace.
 //
@@ -31,13 +28,8 @@ package coverage
 import (
 	"bytes"
 	"fmt"
-	icov "internal/coverage"
-	"internal/coverage/decodecounter"
-	"internal/coverage/decodemeta"
-	"internal/coverage/rtcov"
 	"io"
 	"runtime/coverage"
-	"unsafe"
 
 	"gvisor.dev/gvisor/pkg/hostarch"
 	"gvisor.dev/gvisor/pkg/log"
@@ -68,7 +60,7 @@ const blockBitLength = 16
 // Available returns whether any coverage data is available.
 func Available() bool {
 	InitCoverageData()
-	return len(globalData.pkgs) > 0
+	return true //len(globalData.pkgs) > 0
 }
 
 // EnableReport sets up coverage reporting.
@@ -83,12 +75,11 @@ func EnableReport(w io.WriteCloser) {
 // If coverage reporting is on, do not turn on kcov, which will consume
 // coverage data.
 func KcovSupported() bool {
+	return true
 	return (reportOutput == nil) && Available()
 }
 
 var globalData struct {
-	pkgs map[uint32]*pkg
-
 	// once ensures that globalData is only initialized once.
 	once sync.Once
 }
@@ -170,13 +161,6 @@ func (fb *fileBuffer) Seek(offset int64, whence int) (int64, error) {
 	return newOffset, nil
 }
 
-//go:linkname getCovCounterList
-func getCovCounterList() []rtcov.CovCounterBlob
-
-type pkg struct {
-	funcs map[uint32]icov.FuncDesc
-}
-
 // ConsumeCoverageData builds and writes the collection of covered PCs. It
 // returns the number of bytes written.
 //
@@ -213,6 +197,7 @@ func ConsumeCoverageData(w io.Writer) int {
 	var pcBuffer [8]byte
 
 	consumeCoverageData(func(pc uint64) bool {
+		log.Debugf("pc: %x\n", pc)
 		hostarch.ByteOrder.PutUint64(pcBuffer[:], pc)
 		n, err := w.Write(pcBuffer[:])
 		if err != nil {
@@ -246,60 +231,12 @@ func consumeCoverageData(handler func(pc uint64) bool) {
 	}
 	coverage.ClearCounters()
 
-	fb := fileBuffer{buffer: buf.Bytes()}
-	cdr, err := decodecounter.NewCounterDataReader("cover", &fb)
-	if err != nil {
-		log.Warningf("decodecounter.NewCounterDataReader failed: %s", err)
-		return
-	}
-
-	var data decodecounter.FuncPayload
-	for {
-		ok, err := cdr.NextFunc(&data)
-		if err != nil {
-			panic(fmt.Sprintf("CounterDataReader.NextFunc failed: %s", err))
-		}
-		if !ok {
-			break
-		}
-		for i := 0; i < len(data.Counters); i++ {
-			if data.Counters[i] == 0 {
-				continue
-			}
-			pc := calculateSyntheticPC(data.PkgIdx, data.FuncIdx, i)
-			if !handler(pc) {
-				return
-			}
-		}
-	}
-	return
 }
 
 // InitCoverageData initializes globalData. It should be called before any kcov
 // data is written.
 func InitCoverageData() {
 	globalData.once.Do(func() {
-		globalData.pkgs = make(map[uint32]*pkg)
-		ml := rtcov.Meta.List
-		for k, b := range ml {
-			byteSlice := unsafe.Slice(b.P, b.Len)
-			p := pkg{}
-			globalData.pkgs[uint32(k)] = &p
-			p.funcs = make(map[uint32]icov.FuncDesc)
-			pd, err := decodemeta.NewCoverageMetaDataDecoder(byteSlice, true)
-			if err != nil {
-				panic(fmt.Sprintf("decodemeta.NewCoverageMetaDataDecoder failed: %s", err))
-			}
-			var fd icov.FuncDesc
-			nf := pd.NumFuncs()
-			for fidx := uint32(0); fidx < nf; fidx++ {
-				if err := pd.ReadFunc(fidx, &fd); err != nil {
-					panic(fmt.Sprintf("reading meta-data file: %s", err))
-				}
-				p.funcs[fidx] = fd
-			}
-
-		}
 	})
 }
 
@@ -337,29 +274,12 @@ func Symbolize(out io.Writer, pc uint64) error {
 }
 
 func symbolize(out io.Writer, pc uint64) error {
-	pkgIdx, funcIdx, idx := syntheticPCToIndexes(pc)
-	p := globalData.pkgs[uint32(pkgIdx)]
-	fd := p.funcs[uint32(funcIdx)]
-	u := fd.Units[idx]
-	_, err := io.WriteString(out, fmt.Sprintf("%s:%d.%d,%d.%d\n", fd.Srcfile, u.StLine, u.StCol, u.EnLine, u.EnCol))
-	return err
+	return fmt.Errorf("not implemented")
 }
 
 // WriteAllBlocks prints all information about all blocks along with their
 // corresponding synthetic PCs.
 func WriteAllBlocks(out io.Writer) error {
-	for pkgIdx, p := range globalData.pkgs {
-		for funcIdx, fd := range p.funcs {
-			for idx := range fd.Units {
-				pc := calculateSyntheticPC(pkgIdx, funcIdx, idx)
-				err := Symbolize(out, pc)
-				if err != nil {
-					return err
-				}
-
-			}
-		}
-	}
 	return nil
 }
 
