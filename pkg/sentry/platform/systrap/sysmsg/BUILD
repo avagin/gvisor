@@ -120,15 +120,22 @@ go_library(
         "sysmsg.go",
         "sysmsg_4k.go",
         "sysmsg_64k.go",
-        "sysmsg_amd64.go",
-        "sysmsg_arm64.go",
         "sysmsg_unsafe.go",
         ":sighandler_go_arch",
-    ],
+    ] + select({
+        "//tools/bazeldefs:amd64": ["sysmsg_amd64.go"],
+        "//tools/bazeldefs:arm64": ["sysmsg_arm64.go"],
+        "//conditions:default": [
+            "sysmsg_amd64.go",
+            "sysmsg_arm64.go",
+        ],
+    }),
     embedsrcs = [
         ":sighandler_binary_arch",  # keep
     ],
+    stateify = False,
     visibility = ["//:sandbox"],
+
     deps = [
         "//pkg/abi/linux",
         "//pkg/cpuid",

@@ -234,50 +234,52 @@ def go_library(name, srcs, deps = [], imports = [], stateify = True, force_add_s
     # files. This will prevent us from generating non-sensical combinations,
     # e.g.  foo_amd64_arm64.s. In most cases, the select_arch will use only the
     # default selector.
-    template_srcs = [src for src in all_srcs if ".tmpl." in src]
-    non_template_srcs = [src for src in all_srcs if src not in template_srcs]
-    if len(template_srcs) > 0:
-        split_rules = dict()  # rule => dict(arch => src)
-        arch_suffixes = arch_transition_impl(dict(), dict()).keys()
-        for file in template_srcs:
-            file_base, suffix = file.split(".tmpl.")
-            arch_key = "default"  # Used if no matching arch is set.
-            rule_base = file_base
-            for arch in arch_suffixes:
-                if file_base.endswith(arch):
-                    rule_base = file_base.removesuffix("_" + arch)
-                    arch_key = arch
-            rule_base += "_asm" if suffix == "s" else "_go"
-            if not rule_base in split_rules:
-                split_rules[rule_base] = dict()
-            if arch_key in split_rules[rule_base]:
-                fail("duplicate arch %s found? unable to construct select_arch." % arch_key)
-            split_rules[rule_base][arch_key] = file
-        rendered_srcs = list()
-        for rule_base, arch_dict in split_rules.items():
-            suffix = "s" if rule_base.endswith("_asm") else "go"
-            nogo_facts_render(
-                name = rule_base + "_render",
-                srcs = all_srcs,
-                deps = all_deps,
-                output = rule_base + "_impl." + suffix,
-                format = suffix == "go",
-                template = select_arch(**arch_dict),
-            )
-            if len(arch_dict) == 1 and "default" in arch_dict:
-                # No need to render per-architecture.
-                rendered_srcs.append(":" + rule_base + "_render")
-            else:
-                arch_genrule(
-                    name = rule_base + "_render_arch",
-                    src = ":" + rule_base + "_render",
-                    template = rule_base + "_impl_%s." + suffix,
+    if type(all_srcs) == "list":
+        template_srcs = [src for src in all_srcs if ".tmpl." in src]
+        non_template_srcs = [src for src in all_srcs if src not in template_srcs]
+        if len(template_srcs) > 0:
+            split_rules = dict()  # rule => dict(arch => src)
+            arch_suffixes = arch_transition_impl(dict(), dict()).keys()
+            for file in template_srcs:
+                file_base, suffix = file.split(".tmpl.")
+                arch_key = "default"  # Used if no matching arch is set.
+                rule_base = file_base
+                for arch in arch_suffixes:
+                    if file_base.endswith(arch):
+                        rule_base = file_base.removesuffix("_" + arch)
+                        arch_key = arch
+                rule_base += "_asm" if suffix == "s" else "_go"
+                if not rule_base in split_rules:
+                    split_rules[rule_base] = dict()
+                if arch_key in split_rules[rule_base]:
+                    fail("duplicate arch %s found? unable to construct select_arch." % arch_key)
+                split_rules[rule_base][arch_key] = file
+            rendered_srcs = list()
+            for rule_base, arch_dict in split_rules.items():
+                suffix = "s" if rule_base.endswith("_asm") else "go"
+                nogo_facts_render(
+                    name = rule_base + "_render",
+                    srcs = all_srcs,
+                    deps = all_deps,
+                    output = rule_base + "_impl." + suffix,
+                    format = suffix == "go",
+                    template = select_arch(**arch_dict),
                 )
-                rendered_srcs.append(":" + rule_base + "_render_arch")
+                if len(arch_dict) == 1 and "default" in arch_dict:
+                    # No need to render per-architecture.
+                    rendered_srcs.append(":" + rule_base + "_render")
+                else:
+                    arch_genrule(
+                        name = rule_base + "_render_arch",
+                        src = ":" + rule_base + "_render",
+                        template = rule_base + "_impl_%s." + suffix,
+                    )
+                    rendered_srcs.append(":" + rule_base + "_render_arch")
 
-        # Update the sources to reflect the final set. We no longer use the
-        # template_srcs, but switch over to the rendered_srcs.
-        all_srcs = non_template_srcs + rendered_srcs
+            # Update the sources to reflect the final set. We no longer use the
+            # template_srcs, but switch over to the rendered_srcs.
+            all_srcs = non_template_srcs + rendered_srcs
+
 
     # Generate the actual library.
     _go_library(

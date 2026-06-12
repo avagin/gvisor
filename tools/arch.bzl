@@ -7,16 +7,33 @@ select_arch = _select_arch
 transition_allowlist = _transition_allowlist
 
 def arch_transition_impl(settings, attr):
+    cross_compile = True
+    if "//tools/bazeldefs:cross_compile" in settings:
+        cross_compile = settings["//tools/bazeldefs:cross_compile"]
+
+    if not cross_compile:
+        cpu = settings.get("//command_line_option:cpu")
+        if cpu == "aarch64":
+            return {"arm64": _arm64_config(settings, attr)}
+        else:
+            # Default to amd64 for local builds if not arm64
+            return {"amd64": _amd64_config(settings, attr)}
+
     return {
         "arm64": _arm64_config(settings, attr),
         "amd64": _amd64_config(settings, attr),
     }
 
+
 arch_transition = transition(
     implementation = arch_transition_impl,
-    inputs = [],
+    inputs = [
+        "//command_line_option:cpu",
+        "//tools/bazeldefs:cross_compile",
+    ],
     outputs = _arch_config,
 )
+
 
 def _arch_genrule_impl(ctx):
     """Runs a command with inputs from multiple architectures.

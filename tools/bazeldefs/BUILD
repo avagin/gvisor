@@ -1,4 +1,12 @@
 load("//tools:defs.bzl", "bzl_library")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "cross_compile",
+    build_setting_default = True,
+    visibility = ["//:sandbox"],
+)
+
 
 package(
     default_applicable_licenses = ["//:license"],
